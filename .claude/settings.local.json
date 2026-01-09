@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(npm install)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(curl:*)",
+      "Bash(node verify-system.js:*)",
+      "Bash(node scripts/pre-production-check.js:*)",
+      "Bash(npx tsc:*)",
+      "Bash(Get-Content SignalCard.tsx)",
+      "Bash(Select-Object -Index 121)",
+      "Bash(npm run build:*)",
+      "Bash(npm test)",
+      "Bash(npm run dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(cat:*)",
+      "Bash(findstr:*)"
+    ]
+  }
+}

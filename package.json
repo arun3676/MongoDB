@@ -1,0 +1,40 @@
+{
+  "name": "fraud-escalation-agent",
+  "version": "0.1.0",
+  "description": "Multi-agent fraud detection system with x402 payment protocol and MongoDB Atlas integration",
+  "private": true,
+  "keywords": [
+    "fraud-detection",
+    "multi-agent",
+    "mongodb",
+    "x402",
+    "blockchain",
+    "agentic-ai"
+  ],
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@coinbase/coinbase-sdk": "^0.25.0",
+    "mongodb": "^6.3.0",
+    "next": "^15.1.0",
+    "openai": "^4.28.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/react": "^18.2.46",
+    "@types/react-dom": "^18.2.18",
+    "autoprefixer": "^10.4.16",
+    "dotenv": "^16.3.1",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^15.1.0",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  }
+}
