@@ -35,13 +35,13 @@ export default function AgentTimeline({ timeline, payments = [] }: AgentTimeline
     const map = new Map<number, boolean>();
     timeline.forEach((step, index) => {
       const stepTime = typeof step.timestamp === 'string' ? new Date(step.timestamp) : step.timestamp;
-      
+
       // Check metadata for negotiation info
       if (step.metadata?.negotiation || step.metadata?.negotiationOutcome) {
         map.set(index, true);
         return;
       }
-      
+
       // Check output for negotiation outcome
       if (step.output && typeof step.output === 'object') {
         if ('negotiationOutcome' in step.output || 'negotiation' in step.output) {
@@ -51,8 +51,8 @@ export default function AgentTimeline({ timeline, payments = [] }: AgentTimeline
       }
 
       // Check if action indicates negotiation
-      if (step.action?.toLowerCase().includes('negotiat') || 
-          step.action?.toLowerCase().includes('haggle')) {
+      if (step.action?.toLowerCase().includes('negotiat') ||
+        step.action?.toLowerCase().includes('haggle')) {
         map.set(index, true);
         return;
       }
@@ -91,12 +91,12 @@ export default function AgentTimeline({ timeline, payments = [] }: AgentTimeline
 
   if (timeline.length === 0) {
     return (
-      <div className="glass-card p-6">
-        <h2 className="heading-md mb-4 text-[var(--text-primary)]">Agent Pulse</h2>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Agent Pulse</h2>
         <div className="text-center py-12">
-          <div className="text-5xl mb-4 animate-pulse-mint">⏳</div>
-          <p className="text-[var(--text-secondary)]">Initializing agent workflow...</p>
-          <p className="text-sm text-[var(--text-muted)] mt-2">Agent pulse will appear shortly</p>
+          <div className="text-5xl mb-4 animate-bounce">⏳</div>
+          <p className="text-gray-500">Initializing agent workflow...</p>
+          <p className="text-xs text-gray-400 mt-2">Agent pulse will appear shortly</p>
         </div>
       </div>
     );
@@ -104,31 +104,23 @@ export default function AgentTimeline({ timeline, payments = [] }: AgentTimeline
 
   return (
     <div
-      className="glass-card p-6"
-      style={{
-        background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(23, 25, 35, 0.9))',
-        backdropFilter: 'blur(12px)',
-      }}
+      className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8"
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <h2 className="heading-md text-[var(--text-primary)]">Agent Pulse</h2>
+          <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Agent Pulse</h2>
           <div
-            className="w-2 h-2 rounded-full bg-[var(--mint)] animate-pulse"
+            className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"
             style={{
-              boxShadow: '0 0 10px rgba(16, 185, 129, 0.6)',
+              boxShadow: '0 0 12px rgba(59, 130, 246, 0.5)',
             }}
           />
         </div>
         <div className="flex items-center gap-2">
           <span
-            className="badge badge-info font-medium"
-            style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1))',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-            }}
+            className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100"
           >
-            {timeline?.length ?? 0} {timeline?.length === 1 ? 'agent' : 'agents'}
+            {timeline?.length ?? 0} {timeline?.length === 1 ? 'Agent Active' : 'Agents Active'}
           </span>
         </div>
       </div>
@@ -136,10 +128,8 @@ export default function AgentTimeline({ timeline, payments = [] }: AgentTimeline
       {/* Horizontal scrollable container with gap */}
       <div
         ref={timelineRef}
-        className="flex flex-row gap-4 overflow-x-auto pb-4 snap-x snap-mandatory"
+        className="flex flex-row gap-6 overflow-x-auto pb-6 scrollbar-hide snap-x snap-mandatory"
         style={{
-          scrollbarColor: 'rgba(16, 185, 129, 0.4) rgba(23, 25, 35, 0.5)',
-          scrollbarWidth: 'thin',
           scrollBehavior: 'smooth',
         }}
       >

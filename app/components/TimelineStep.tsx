@@ -47,7 +47,6 @@ export default function TimelineStep({
     return `${minutes}m ${seconds}s`;
   };
 
-  // Get agent icon based on agent name or action (with emoji fallback)
   const getAgentIcon = () => {
     const agentLower = agentName?.toLowerCase() ?? '';
     const actionLower = action?.toLowerCase() ?? '';
@@ -73,7 +72,6 @@ export default function TimelineStep({
     }
   };
 
-  // Render icon (handle both emoji strings and components)
   const renderIcon = () => {
     const icon = getAgentIcon();
     if (typeof icon === 'string') {
@@ -82,7 +80,6 @@ export default function TimelineStep({
     return icon;
   };
 
-  // Get friendly agent name
   const getFriendlyAgentName = (name: string): string => {
     const nameMap: Record<string, string> = {
       'Suspicion Agent': 'Suspicion',
@@ -95,117 +92,54 @@ export default function TimelineStep({
       'Orchestrator': 'Orchestrator',
       'VOI/Budget Agent': 'VOI/Budget',
     };
-
-    // Check for exact match
-    if (nameMap[name]) {
-      return nameMap[name];
-    }
-
-    // Return shortened version
+    if (nameMap[name]) return nameMap[name];
     return name.replace(' Agent', '').trim();
   };
 
-  // Get confidence from output
   const getConfidence = (): number | null => {
     if (!output) return null;
-
-    // Check various possible locations for confidence (with optional chaining)
-    if (typeof output?.confidence === 'number') {
-      return output.confidence;
-    }
-    if (typeof output?.confidence_score === 'number') {
-      return output.confidence_score;
-    }
-    if (typeof output?.suspicion_score === 'number') {
-      return output.suspicion_score;
-    }
-
+    if (typeof output?.confidence === 'number') return output.confidence;
+    if (typeof output?.confidence_score === 'number') return output.confidence_score;
+    if (typeof output?.suspicion_score === 'number') return output.suspicion_score;
     return null;
   };
 
-  // Get confidence badge color
   const getConfidenceBadgeClass = (confidence: number): string => {
-    if (confidence >= 80) {
-      return 'badge-success';
-    } else if (confidence >= 50) {
-      return 'badge-warning';
-    } else {
-      return 'badge-danger';
-    }
+    if (confidence >= 80) return 'bg-green-100 text-green-700';
+    if (confidence >= 50) return 'bg-yellow-100 text-yellow-700';
+    return 'bg-red-100 text-red-700';
   };
 
-  // Get summary from output
   const getSummary = (): string => {
     if (!output) return 'Processing...';
-
-    // Try to extract reasoning (with optional chaining)
     if (typeof output?.reasoning === 'string') {
-      // Truncate to ~60 characters
       const reasoning = output.reasoning;
-      if (reasoning.length > 60) {
-        return reasoning.substring(0, 57) + '...';
-      }
-      return reasoning;
+      return reasoning.length > 60 ? reasoning.substring(0, 57) + '...' : reasoning;
     }
-
-    // Try other fields
     if (typeof output?.summary === 'string') {
       const summary = output.summary;
-      if (summary.length > 60) {
-        return summary.substring(0, 57) + '...';
-      }
-      return summary;
+      return summary.length > 60 ? summary.substring(0, 57) + '...' : summary;
     }
-
-    if (typeof output?.decision === 'string') {
-      return output.decision;
-    }
-
-    // Fallback to action
+    if (typeof output?.decision === 'string') return output.decision;
     return action?.replace(/_/g, ' ')?.toLowerCase() ?? 'Processing...';
   };
 
-  // Extract model information from metadata or output
   const getModelInfo = (): string | null => {
-    if (metadata?.llmModel) {
-      return metadata.llmModel as string;
-    }
-    if (metadata?.model) {
-      return metadata.model as string;
-    }
-    if (output && typeof output === 'object' && 'model' in output) {
-      return output.model as string;
-    }
+    if (metadata?.llmModel) return metadata.llmModel as string;
+    if (metadata?.model) return metadata.model as string;
+    if (output && typeof output === 'object' && 'model' in output) return output.model as string;
     return null;
   };
 
-  // Format model name for display
   const formatModelName = (model: string): string => {
-    // Handle full path like "accounts/fireworks/models/llama-v3p3-70b-instruct"
     if (model.includes('/')) {
       const parts = model.split('/');
       model = parts[parts.length - 1];
     }
-
-    // Handle common patterns
-    if (model.includes('llama-v3p3')) {
-      return 'Llama 3.3 70B';
-    }
-    if (model.includes('llama-v3p1')) {
-      return 'Llama 3.1 70B';
-    }
-    if (model.includes('llama-4')) {
-      return 'Llama 4 Maverick';
-    }
-
-    // Default: clean up the name
-    return model
-      .replace('llama-', 'Llama ')
-      .replace('v3p3', '3.3')
-      .replace('v3p1', '3.1')
-      .replace('-instruct', '')
-      .replace('-', ' ')
-      .toUpperCase();
+    if (model.includes('llama-v3p3')) return 'Llama 3.3 70B';
+    if (model.includes('llama-v3p1')) return 'Llama 3.1 70B';
+    if (model.includes('llama-4')) return 'Llama 4 Maverick';
+    return model.replace('llama-', 'Llama ').replace('v3p3', '3.3').replace('v3p1', '3.1').replace('-instruct', '').replace('-', ' ').toUpperCase();
   };
 
   const confidence = getConfidence();
@@ -215,255 +149,120 @@ export default function TimelineStep({
 
   return (
     <>
-      {/* Tile - 220px width as specified */}
       <div
         onClick={() => setIsModalOpen(true)}
-        className="flex-shrink-0 glass-card p-4 cursor-pointer transition-all duration-200 hover:border-[var(--mint)] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-[1.02] animate-fade-in"
-        style={{
-          width: '220px',
-          animationDuration: '200ms',
-          background: 'linear-gradient(135deg, rgba(23, 25, 35, 0.95), rgba(30, 33, 45, 0.9))',
-          backdropFilter: 'blur(12px)',
-        }}
+        className="flex-shrink-0 bg-neutral-50 rounded-2xl p-5 cursor-pointer transition-all duration-300 border border-neutral-200 hover:border-blue-400 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1 group"
+        style={{ width: '240px' }}
       >
-        {/* Icon */}
-        <div className="flex justify-center mb-3">
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center text-[var(--mint)] transition-all duration-200"
-            style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1))',
-              boxShadow: '0 0 15px rgba(16, 185, 129, 0.2)',
-            }}
-          >
+        <div className="flex justify-center mb-4">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-blue-600 bg-white shadow-sm border border-neutral-100 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
             {renderIcon()}
           </div>
         </div>
-
-        {/* Agent Name */}
         <div className="text-center mb-3">
-          <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
-            {friendlyName}
-          </p>
+          <p className="text-sm font-bold text-gray-900 truncate">{friendlyName}</p>
         </div>
-
-        {/* Haggled Badge (for negotiation) */}
         {hasNegotiation && (
           <div className="flex justify-center mb-2">
-            <span
-              className="badge text-xs font-medium px-2 py-1"
-              style={{
-                background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.15))',
-                border: '1px solid rgba(251, 191, 36, 0.4)',
-                color: '#fbbf24',
-              }}
-            >
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 uppercase">
               💰 Haggled
             </span>
           </div>
         )}
-
-        {/* Confidence Badge */}
         {confidence !== null && (
           <div className="flex justify-center mb-3">
-            <span className={`badge ${getConfidenceBadgeClass(confidence)} text-xs font-medium`}>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getConfidenceBadgeClass(confidence)}`}>
               {confidence}%
             </span>
           </div>
         )}
-
-        {/* Summary - max 60 chars */}
         <div className="text-center">
-          <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-            {summary}
-          </p>
+          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed font-medium">{summary}</p>
         </div>
       </div>
 
-      {/* Dark Glassmorphic Modal */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-            backdropFilter: 'blur(12px)',
-          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
           onClick={() => setIsModalOpen(false)}
         >
-          {/* Modal Content - Slide-over style */}
           <div
-            className="max-w-3xl w-full max-h-[90vh] overflow-y-auto m-4 rounded-lg shadow-2xl"
+            className="max-w-3xl w-full max-h-[90vh] overflow-y-auto rounded-[2rem] shadow-2xl bg-white border border-gray-100"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              animation: 'fade-in 200ms ease-out',
-              background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(23, 25, 35, 0.95))',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(16, 185, 129, 0.2)',
-              boxShadow: '0 0 40px rgba(16, 185, 129, 0.15), 0 20px 60px rgba(0, 0, 0, 0.5)',
-            }}
           >
-            {/* Header */}
-            <div
-              className="sticky top-0 border-b p-6 flex items-center justify-between"
-              style={{
-                background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(23, 25, 35, 0.95))',
-                backdropFilter: 'blur(20px)',
-                borderColor: 'rgba(16, 185, 129, 0.2)',
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--mint)]"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1))',
-                    boxShadow: '0 0 15px rgba(16, 185, 129, 0.2)',
-                  }}
-                >
+            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-100 p-8 flex items-center justify-between z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-blue-600 bg-blue-50 border border-blue-100">
                   {renderIcon()}
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-[var(--text-primary)]">
-                    {agentName}
-                  </h2>
-                  <p className="text-sm text-[var(--text-muted)]">
-                    Step {stepNumber}
-                  </p>
+                  <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">{agentName}</h2>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Operation Sequence {stepNumber}</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--mint)] hover:bg-[var(--carbon-lighter)] transition-all duration-200"
-                style={{
-                  background: 'rgba(16, 185, 129, 0.1)',
-                }}
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-colors"
                 aria-label="Close modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            {/* Content */}
-            <div className="p-6 space-y-6">
-              {/* Metadata */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">
-                    Step ID
-                  </p>
-                  <p className="text-sm text-[var(--text-primary)] mono">
-                    {stepNumber}
-                  </p>
+            <div className="p-8 space-y-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Step ID</p>
+                  <p className="text-sm font-bold text-gray-900">{stepNumber}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">
-                    Timestamp
-                  </p>
-                  <p className="text-sm text-[var(--text-primary)] mono">
-                    {formatTimestamp(timestamp)}
-                  </p>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Time</p>
+                  <p className="text-sm font-bold text-gray-900">{formatTimestamp(timestamp)}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">
-                    Duration
-                  </p>
-                  <p className="text-sm text-[var(--text-primary)] mono">
-                    {formatDuration(duration)}
-                  </p>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Latency</p>
+                  <p className="text-sm font-bold text-gray-900">{formatDuration(duration)}</p>
                 </div>
                 {modelInfo && (
-                  <div>
-                    <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">
-                      Model
-                    </p>
-                    <p className="text-sm text-[var(--text-primary)]">
-                      {formatModelName(modelInfo)}
-                    </p>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Engine</p>
+                    <p className="text-sm font-bold text-gray-900">{formatModelName(modelInfo)}</p>
                   </div>
                 )}
-                <div className="col-span-2">
-                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">
-                    Action
-                  </p>
-                  <p className="text-sm text-[var(--text-primary)] mono">
-                    {action}
-                  </p>
-                </div>
               </div>
 
-              {/* Confidence (if available) */}
               {confidence !== null && (
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
-                    Confidence Score
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <span className={`badge ${getConfidenceBadgeClass(confidence)}`}>
+                <div className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Confidence Score</p>
+                    <span className={`px-2 py-1 rounded-lg text-xs font-bold ${getConfidenceBadgeClass(confidence)}`}>
                       {confidence}%
                     </span>
-                    <div className="flex-1 h-2 bg-[var(--carbon)] rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${
-                          confidence >= 80
-                            ? 'bg-[var(--success)]'
-                            : confidence >= 50
-                            ? 'bg-[var(--warning)]'
-                            : 'bg-[var(--danger)]'
-                        }`}
-                        style={{ width: `${confidence}%` }}
-                      />
-                    </div>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${confidence >= 80 ? 'bg-green-500' : confidence >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                      style={{ width: `${confidence}%` }}
+                    />
                   </div>
                 </div>
               )}
 
-              {/* Raw Reasoning */}
               {output && typeof output?.reasoning === 'string' && (
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
-                    Agent Reasoning
-                  </p>
-                  <div className="code-block">
-                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                      {output.reasoning}
-                    </p>
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Agent Reasoning</p>
+                  <div className="p-6 bg-blue-50/30 rounded-[1.5rem] border border-blue-100/50">
+                    <p className="text-sm text-gray-700 leading-relaxed font-medium whitespace-pre-wrap">{output.reasoning}</p>
                   </div>
                 </div>
               )}
 
-              {/* Raw Output */}
-              {output && (
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
-                    Raw Output
-                  </p>
-                  <div className="code-block mono text-[var(--text-secondary)] overflow-x-auto">
-                    <pre className="text-xs leading-relaxed">{JSON.stringify(output, null, 2)}</pre>
-                  </div>
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Raw Payload</p>
+                <div className="bg-neutral-900 rounded-[1.5rem] p-6 overflow-x-auto">
+                  <pre className="text-xs text-blue-300/80 font-mono leading-relaxed">{JSON.stringify({ input, output, metadata }, null, 2)}</pre>
                 </div>
-              )}
-
-              {/* Input Context (if available) */}
-              {input && (
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
-                    Input Context
-                  </p>
-                  <div className="code-block mono text-[var(--text-secondary)] overflow-x-auto">
-                    <pre className="text-xs leading-relaxed">{JSON.stringify(input, null, 2)}</pre>
-                  </div>
-                </div>
-              )}
-
-              {/* Metadata (if available and different from output) */}
-              {metadata && Object.keys(metadata ?? {}).length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
-                    Metadata
-                  </p>
-                  <div className="code-block mono text-[var(--text-secondary)] overflow-x-auto">
-                    <pre className="text-xs leading-relaxed">{JSON.stringify(metadata, null, 2)}</pre>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

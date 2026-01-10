@@ -94,7 +94,10 @@ interface CaseData {
     agentDecisionsCount: number;
     signalsCount: number;
     totalCost: number;
-    riskFactorsCount: number;
+    metadata?: {
+      llmModel?: string;
+    };
+    riskFactorsCount?: number;
   };
   debate?: {
     defense: {
@@ -234,31 +237,30 @@ export default function CaseDetailPage() {
 
   const arbiterVerdict = arbiterStep
     ? {
-        output: arbiterStep.output as { reasoning?: string; decision?: string; confidence?: number },
-        metadata: arbiterStep.metadata as { model?: string },
-      }
+      output: arbiterStep.output as { reasoning?: string; decision?: string; confidence?: number },
+      metadata: arbiterStep.metadata as { model?: string },
+    }
     : undefined;
 
   // Success State - Render full case detail
   return (
     <main className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* FIRST: Verdict Banner (only if completed) */}
-        {caseData.status === 'COMPLETED' && caseData.finalDecision && (
-          <div className="mb-8">
-            <FinalDecision
-              decision={caseData.finalDecision.decision}
-              confidence={caseData.finalDecision.confidence}
-              reasoning={caseData.finalDecision.reasoning}
-              agentDecisionsCount={caseData.finalDecision.agentDecisionsCount}
-              signalsCount={caseData.finalDecision.signalsCount}
-              totalCost={caseData.finalDecision.totalCost}
-              riskFactorsCount={caseData.finalDecision.riskFactorsCount}
-              transactionId={transactionId}
-              arbiterVerdict={arbiterVerdict}
-            />
-          </div>
-        )}
+        {/* Final Verdict Banner (Always visible) */}
+        <div className="mb-8">
+          <FinalDecision
+            decision={caseData.finalDecision?.decision}
+            confidence={caseData.finalDecision?.confidence}
+            reasoning={caseData.finalDecision?.reasoning}
+            agentDecisionsCount={caseData.decisions.length}
+            signalsCount={caseData.signals.length}
+            totalCost={caseData.totalCost}
+            riskFactorsCount={caseData.finalDecision?.riskFactorsCount || 0}
+            transactionId={transactionId}
+            arbiterVerdict={arbiterVerdict}
+            metadata={caseData.finalDecision?.metadata}
+          />
+        </div>
 
         {/* SECOND: Case Header */}
         <CaseHeader transaction={caseData.transaction} status={caseData.status} />
@@ -270,37 +272,42 @@ export default function CaseDetailPage() {
           spentSoFar={caseData.budget?.spentSoFar}
         />
 
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Left column (2/3 width) - Timeline + Live Terminal */}
-          <div className="space-y-6 lg:col-span-2">
-            <AgentTimeline timeline={caseData.timeline} payments={caseData.payments} />
-            <LiveTerminal transactionId={transactionId} />
-          </div>
+        {/* Unified vertical layout */}
+        <div className="space-y-6">
+          {/* Main sequence: Timeline -> Terminal -> Debate -> Signals -> Decisions */}
+          <AgentTimeline timeline={caseData.timeline} payments={caseData.payments} />
 
-          {/* Right column (1/3 width) - Debate + Signals & Decisions */}
-          <div className="space-y-6">
-            <DebateView timeline={caseData.timeline} />
+          <LiveTerminal transactionId={transactionId} />
 
-            {/* Signals */}
-            {caseData.signals.map((signal) => (
-              <SignalCard key={signal.signalId} signal={signal} />
-            ))}
+          {/* Debate visualization - Prosecution & Defense */}
+          <DebateView timeline={caseData.timeline} />
 
-            {/* Debate Tribunal (if available) */}
-            {caseData.debate && (
-              <DebateCard
-                defense={caseData.debate.defense}
-                prosecution={caseData.debate.prosecution}
-                verdict={caseData.debate.verdict}
-              />
-            )}
+          {/* Consensus/Debate Summary Card (Alternative view) */}
+          {caseData.debate && (
+            <DebateCard
+              defense={caseData.debate.defense}
+              prosecution={caseData.debate.prosecution}
+              verdict={caseData.debate.verdict}
+            />
+          )}
 
-            {/* Decisions */}
-            {caseData.decisions.map((decision) => (
-              <DecisionCard key={decision.decisionId} decision={decision} />
-            ))}
-          </div>
+          {/* Signals Grid */}
+          {caseData.signals.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {caseData.signals.map((signal) => (
+                <SignalCard key={signal.signalId} signal={signal} />
+              ))}
+            </div>
+          )}
+
+          {/* Agent Decisions Grid */}
+          {caseData.decisions.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {caseData.decisions.map((decision) => (
+                <DecisionCard key={decision.decisionId} decision={decision} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Audit Download (only when status = COMPLETED) */}

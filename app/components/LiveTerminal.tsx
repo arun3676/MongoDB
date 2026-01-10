@@ -52,12 +52,12 @@ interface SystemLogEvent {
   color: string;
 }
 
-const TERMINAL_BG = '#121214';
-const TERMINAL_BORDER = '#3B3B3D';
-const TERMINAL_HEADER_BG = '#0A0A0B';
-const DB_WRITE_COLOR = '#00D4FF';
-const x402_AUTH_COLOR = '#F59E0B';
-const x402_SUCCESS_COLOR = '#10B981';
+const TERMINAL_BG = 'rgba(249, 250, 251, 0.5)'; // Light gray subtle
+const TERMINAL_BORDER = 'rgba(229, 231, 235, 1)'; // Gray 200
+const TERMINAL_HEADER_BG = 'white';
+const DB_WRITE_COLOR = '#0ea5e9'; // Sky 500
+const x402_AUTH_COLOR = '#f59e0b'; // Amber 500
+const x402_SUCCESS_COLOR = '#10b981'; // Emerald 500
 
 function formatTimestamp(dateValue: string | Date): string {
   const date = new Date(dateValue);
@@ -70,55 +70,6 @@ function formatTimestamp(dateValue: string | Date): string {
 function shortenTxHash(hash?: string): string {
   if (!hash || hash === 'unknown') return 'N/A';
   return hash.slice(0, 10);
-}
-
-interface TribunalConsensusProps {
-  defense?: TimelineItem;
-  prosecution?: TimelineItem;
-  verdict?: TimelineItem;
-}
-
-function TribunalConsensus({ defense, prosecution, verdict }: TribunalConsensusProps) {
-  const hasDebate = defense || prosecution || verdict;
-
-  if (!hasDebate) {
-    return (
-      <div className="mt-6 border-t border-[#1E1E20] pt-4">
-        <p className="text-sm font-mono text-[#3B3B3D]">Awaiting Tribunal Consensus...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-6 border-t border-[#1E1E20] pt-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-[#2A2A2E] bg-[#151517] p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#E86F1B]">Prosecution Agent</p>
-          <p className="mt-2 text-sm text-gray-200">{prosecution?.output?.reasoning || 'Building case...'}</p>
-          <p className="mt-3 text-xs text-[#3B3B3D]">
-            Confidence: {prosecution?.output?.confidence ? `${Math.round(prosecution.output.confidence * 100)}%` : '—'}
-          </p>
-        </div>
-        <div className="rounded-lg border border-[#2A2A2E] bg-[#151517] p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">Defense Agent</p>
-          <p className="mt-2 text-sm text-gray-200">{defense?.output?.reasoning || 'Preparing counter-argument...'}</p>
-          <p className="mt-3 text-xs text-[#3B3B3D]">
-            Confidence: {defense?.output?.confidence ? `${Math.round(defense.output.confidence * 100)}%` : '—'}
-          </p>
-        </div>
-      </div>
-      <div className="mt-4 rounded-lg border border-[#2A2A2E] bg-[#101012] p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Tribunal Verdict</p>
-        <p className="mt-2 text-sm text-gray-200">{verdict?.output?.reasoning || 'Awaiting verdict...'}</p>
-        <p className="mt-3 text-xs text-[#3B3B3D]">
-          Decision:{' '}
-          <span className="text-[#00FFC2]">
-            {verdict?.output?.decision || verdict?.metadata?.decision || '—'}
-          </span>
-        </p>
-      </div>
-    </div>
-  );
 }
 
 export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
@@ -166,7 +117,6 @@ export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
   const systemLogEvents: SystemLogEvent[] = useMemo(() => {
     const events: SystemLogEvent[] = [];
 
-    // Parse timeline for DB_WRITE events
     data.timeline?.forEach((step) => {
       events.push({
         id: `db-write-${step.stepNumber}`,
@@ -177,11 +127,9 @@ export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
       });
     });
 
-    // Parse payments for x402 events
     data.payments?.forEach((payment) => {
       const txHash = payment.x402Details?.paymentProof || payment.cdpDetails?.transactionHash;
 
-      // x402_AUTH event (payment required)
       if (payment.createdAt) {
         events.push({
           id: `x402-auth-${payment.paymentId}`,
@@ -192,7 +140,6 @@ export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
         });
       }
 
-      // x402_SUCCESS event (payment completed)
       if (payment.status === 'completed' && payment.completedAt) {
         events.push({
           id: `x402-success-${payment.paymentId}`,
@@ -204,7 +151,6 @@ export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
       }
     });
 
-    // Sort chronologically
     return events.sort((a, b) => {
       const timeA = new Date(a.timestamp).getTime();
       const timeB = new Date(b.timestamp).getTime();
@@ -217,19 +163,6 @@ export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
     feedRef.current.scrollTop = feedRef.current.scrollHeight;
   }, [systemLogEvents.length]);
 
-  const defenseStep = useMemo(
-    () => [...(data.timeline || [])].reverse().find((step) => step.agentName === 'Defense Agent' && step.action === 'DEFENSE_ARGUMENT'),
-    [data.timeline]
-  );
-  const prosecutionStep = useMemo(
-    () => [...(data.timeline || [])].reverse().find((step) => step.agentName === 'Prosecution Agent' && step.action === 'PROSECUTION_ARGUMENT'),
-    [data.timeline]
-  );
-  const verdictStep = useMemo(
-    () => [...(data.timeline || [])].reverse().find((step) => step.agentName === 'Arbiter Agent' && step.action === 'ARBITER_VERDICT'),
-    [data.timeline]
-  );
-
   const totalCost = data.totalCost || 0;
   const signals = data.signals || [];
   const velocitySignal = signals.find((s) => s.signalType === 'velocity');
@@ -237,64 +170,66 @@ export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
 
   return (
     <div
-      className="rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.45)] overflow-hidden"
-      style={{ border: `1px solid ${TERMINAL_BORDER}` }}
+      className="rounded-3xl shadow-sm overflow-hidden bg-white border border-gray-100"
     >
       {/* INTEGRATED COST TRACKER HEADER */}
       <div
-        className="px-6 py-4 border-b border-[#1E1E20]"
-        style={{ background: TERMINAL_HEADER_BG }}
+        className="px-8 py-6 border-b border-gray-50 bg-white"
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-[#6B7280]">Total Spent:</span>
-              <span className="font-mono text-xl font-bold text-[#10B981]">${totalCost.toFixed(2)}</span>
+          <div className="flex items-center gap-8">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Service Cost</span>
+              <span className="text-2xl font-black text-gray-900">${totalCost.toFixed(2)}</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1 rounded-md bg-[#1E3A8A]/20 border border-[#1E3A8A]/40">
-              <svg className="h-3.5 w-3.5 text-[#3B82F6]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12zm-1.5-13.5h3v3h-3v-3z"/>
+            <div className="h-10 w-px bg-gray-100 hidden sm:block"></div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 border border-blue-100 text-blue-700">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12zm-1.5-13.5h3v3h-3v-3z" />
               </svg>
-              <span className="font-mono text-xs text-[#93C5FD]">Paid via Base Sepolia</span>
+              <span className="text-xs font-bold uppercase tracking-tight">Base Sepolia Asset</span>
             </div>
           </div>
 
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-[#10B981] hover:text-[#059669] text-xs font-mono focus:outline-none transition-colors"
+            className="text-gray-400 hover:text-blue-600 text-xs font-bold uppercase tracking-widest transition-colors flex items-center gap-1"
           >
-            {isExpanded ? '[-] Hide Breakdown' : '[+] Show Breakdown'}
+            {isExpanded ? 'Hide Details' : 'View Breakdown'}
+            <svg className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
         </div>
 
         {/* Collapsible Cost Breakdown */}
         {isExpanded && (
-          <div className="mt-4 pt-4 border-t border-[#1E1E20] space-y-2">
+          <div className="mt-6 pt-6 border-t border-gray-50 space-y-3">
             {velocitySignal ? (
-              <div className="flex justify-between items-center text-sm font-mono">
-                <span className="text-[#9CA3AF]">
-                  Velocity Signal <span className="text-xs text-[#6B7280]">({velocitySignal.purchasedBy})</span>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 font-medium">
+                  Velocity Signal <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-400 align-middle ml-1">{velocitySignal.purchasedBy}</span>
                 </span>
-                <span className="text-[#10B981]">${velocitySignal.cost.toFixed(2)}</span>
+                <span className="text-gray-900 font-bold">${velocitySignal.cost.toFixed(2)}</span>
               </div>
             ) : (
-              <div className="flex justify-between items-center text-sm font-mono text-[#4B5563]">
+              <div className="flex justify-between items-center text-sm text-gray-300">
                 <span>Velocity Signal</span>
-                <span>Not purchased</span>
+                <span>n/a</span>
               </div>
             )}
 
             {networkSignal ? (
-              <div className="flex justify-between items-center text-sm font-mono">
-                <span className="text-[#9CA3AF]">
-                  Network Signal <span className="text-xs text-[#6B7280]">({networkSignal.purchasedBy})</span>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 font-medium">
+                  Network Signal <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-400 align-middle ml-1">{networkSignal.purchasedBy}</span>
                 </span>
-                <span className="text-[#10B981]">${networkSignal.cost.toFixed(2)}</span>
+                <span className="text-gray-900 font-bold">${networkSignal.cost.toFixed(2)}</span>
               </div>
             ) : (
-              <div className="flex justify-between items-center text-sm font-mono text-[#4B5563]">
+              <div className="flex justify-between items-center text-sm text-gray-300">
                 <span>Network Signal</span>
-                <span>Not purchased</span>
+                <span>n/a</span>
               </div>
             )}
           </div>
@@ -302,61 +237,50 @@ export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
       </div>
 
       {/* SYSTEM LOG TERMINAL */}
-      <div className="p-4" style={{ background: TERMINAL_BG }}>
-        <div className="flex items-center justify-between border-b border-[#1E1E20] pb-3 mb-4">
+      <div className="p-8 bg-neutral-50/50">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-[#FF5F57]" />
-            <span className="h-3 w-3 rounded-full bg-[#FEBC2E]" />
-            <span className="h-3 w-3 rounded-full bg-[#28C840]" />
+            <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
+            <p className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">System Logs</p>
           </div>
-          <p className="font-mono text-xs tracking-[0.15em] text-[#10B981]">SYSTEM_LOG</p>
-          <span className="text-xs font-mono text-[#3B3B3D]">{transactionId.slice(0, 12)}</span>
+          <span className="text-[10px] font-mono text-gray-400 bg-white border border-gray-100 px-2 py-0.5 rounded uppercase">{transactionId.slice(0, 12)}</span>
         </div>
 
         <div
-          className="max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#3B3B3D] scrollbar-track-transparent"
+          className="max-h-96 overflow-y-auto pr-4 scrollbar-hide space-y-2"
           ref={feedRef}
-          style={{
-            animation: isLoading ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none',
-          }}
         >
           {isLoading && (
-            <p className="font-mono text-sm text-[#3B3B3D]" style={{ fontFamily: "'JetBrains Mono', 'Courier New', monospace" }}>
-              Initializing system log...
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="h-4 w-4 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+              <p className="text-xs font-medium text-gray-400 italic">Initializing secure log stream...</p>
+            </div>
           )}
           {error && (
-            <p className="font-mono text-sm text-red-400" style={{ fontFamily: "'JetBrains Mono', 'Courier New', monospace" }}>
-              ERROR: {error}
+            <p className="text-xs font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
+              CRITICAL: {error}
             </p>
           )}
           {!isLoading && !error && systemLogEvents.length === 0 && (
-            <p className="font-mono text-sm text-[#3B3B3D]" style={{ fontFamily: "'JetBrains Mono', 'Courier New', monospace" }}>
-              No system events yet. Waiting for activity...
-            </p>
+            <p className="text-xs font-medium text-gray-400 text-center py-8">Waiting for agent activity...</p>
           )}
           {!isLoading &&
             !error &&
             systemLogEvents.map((event) => (
-              <div key={event.id} className="flex items-start gap-3 py-1.5 hover:bg-[#1A1A1C] px-2 -mx-2 rounded transition-colors">
+              <div key={event.id} className="flex items-start gap-3 py-2 px-3 rounded-xl bg-white border border-neutral-100/50 hover:border-blue-100 transition-colors group">
                 <span
-                  className="font-mono text-xs text-[#6B7280] shrink-0"
-                  style={{ fontFamily: "'JetBrains Mono', 'Courier New', monospace" }}
+                  className="font-mono text-[10px] text-gray-400 mt-0.5 shrink-0"
                 >
-                  [{formatTimestamp(event.timestamp)}]
+                  {formatTimestamp(event.timestamp)}
                 </span>
                 <span
-                  className="font-mono text-xs font-semibold shrink-0"
-                  style={{ color: event.color, fontFamily: "'JetBrains Mono', 'Courier New', monospace" }}
+                  className="font-black text-[10px] uppercase tracking-tighter shrink-0 px-1.5 py-0.5 rounded"
+                  style={{ color: event.color, background: `${event.color}10` }}
                 >
                   {event.type}
                 </span>
-                <span className="font-mono text-xs text-[#9CA3AF]" style={{ fontFamily: "'JetBrains Mono', 'Courier New', monospace" }}>
-                  →
-                </span>
                 <p
-                  className="font-mono text-xs text-[#D1D5DB] flex-1"
-                  style={{ fontFamily: "'JetBrains Mono', 'Courier New', monospace" }}
+                  className="text-[11px] text-gray-600 font-medium flex-1 leading-relaxed"
                 >
                   {event.message}
                 </p>
@@ -364,8 +288,6 @@ export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
             ))}
         </div>
       </div>
-
-      <TribunalConsensus defense={defenseStep} prosecution={prosecutionStep} verdict={verdictStep} />
     </div>
   );
 }

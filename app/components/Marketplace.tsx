@@ -120,56 +120,59 @@ export default function Marketplace() {
     };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-12">
             {/* Search Header */}
             <div className="relative max-w-2xl mx-auto">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
                     </svg>
                 </div>
                 <input
                     type="text"
-                    className="block w-full pl-10 pr-3 py-4 border border-gray-200 rounded-2xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-sm transition-all"
-                    placeholder="Search futuristic hardware, storage, or security..."
+                    className="block w-full pl-14 pr-6 py-5 bg-white border border-gray-100 rounded-[2rem] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/20 text-lg shadow-2xl shadow-gray-200/20 transition-all font-medium"
+                    placeholder="Search futuristic hardware..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                 />
             </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 {filteredProducts.map((product) => (
-                    <div key={product.id} className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col">
-                        <div className="relative h-48 overflow-hidden">
+                    <div key={product.id} className="group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100/80 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all duration-500 flex flex-col hover:-translate-y-2">
+                        <div className="relative h-56 overflow-hidden">
                             <img
                                 src={product.image}
                                 alt={product.name}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                             />
-                            <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-blue-600 shadow-sm">
+                            <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-blue-600 shadow-xl shadow-black/5">
                                 {product.category}
                             </div>
                         </div>
-                        <div className="p-6 flex-1 flex flex-col">
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">{product.name}</h3>
-                            <p className="text-gray-500 text-sm mb-4 flex-1 line-clamp-2">{product.description}</p>
-                            <div className="flex items-center justify-between mt-4">
-                                <span className="text-2xl font-black text-gray-900">${product.price.toLocaleString()}</span>
+                        <div className="p-8 flex-1 flex flex-col">
+                            <h3 className="text-xl font-black text-gray-900 mb-3 tracking-tight">{product.name}</h3>
+                            <p className="text-gray-500 text-sm mb-6 flex-1 line-clamp-2 leading-relaxed font-medium">{product.description}</p>
+                            <div className="flex flex-col gap-4 mt-auto">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Price</span>
+                                    <span className="text-2xl font-black text-gray-900">${product.price.toLocaleString()}</span>
+                                </div>
                                 <button
                                     onClick={() => handlePurchase(product)}
                                     disabled={purchasingId !== null}
-                                    className="bg-gray-900 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-blue-600 transition-colors disabled:bg-gray-400 flex items-center gap-2"
+                                    className="w-full bg-gray-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-blue-600 transition-all active:scale-95 disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center gap-3 shadow-xl shadow-gray-900/10"
                                 >
                                     {purchasingId === product.id ? (
                                         <>
-                                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                             </svg>
-                                            Verifying...
+                                            <span className="uppercase tracking-widest text-[11px]">Verifying...</span>
                                         </>
-                                    ) : 'Buy Now'}
+                                    ) : <span className="uppercase tracking-[0.15em] text-[11px]">Acquire Asset</span>}
                                 </button>
                             </div>
                         </div>
@@ -178,8 +181,10 @@ export default function Marketplace() {
             </div>
 
             {filteredProducts.length === 0 && (
-                <div className="text-center py-12">
-                    <p className="text-gray-500 text-lg">No products found matching "{search}"</p>
+                <div className="text-center py-24 bg-white rounded-[3rem] border border-dashed border-gray-200">
+                    <div className="text-4xl mb-4">🔍</div>
+                    <p className="text-gray-400 text-lg font-medium">No results found for "{search}"</p>
+                    <button onClick={() => setSearch('')} className="mt-4 text-blue-600 font-bold uppercase tracking-widest text-[10px]">Clear Filter</button>
                 </div>
             )}
         </div>

@@ -3,134 +3,110 @@
 import { useEffect, useState } from 'react';
 
 interface GlobalStatsPayload {
-  stats: {
-    totalFraudPrevented: number;
-    efficiencyGain: number;
-    averageConfidence: number;
-    totalCases: number;
-    lowRiskCasesAvoided: number;
-    arbiterDecisions: number;
-  };
+    stats: {
+        totalFraudPrevented: number;
+        efficiencyGain: number;
+        averageConfidence: number;
+        totalCases: number;
+        lowRiskCasesAvoided: number;
+        arbiterDecisions: number;
+    };
 }
 
-const cardBase =
-  'flex flex-col gap-2 rounded-2xl border px-6 py-5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] transition hover:-translate-y-1';
-
-const cardThemes = {
-  gold: {
-    border: 'border-[#D4AF37]/60',
-    text: 'text-[#FFE9A8]',
-    glow: 'shadow-[0_0_30px_rgba(212,175,55,0.35)]',
-  },
-  silver: {
-    border: 'border-[#C0C0C0]/60',
-    text: 'text-[#E5E7EB]',
-    glow: 'shadow-[0_0_30px_rgba(192,192,192,0.25)]',
-  },
-};
-
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(value || 0);
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+    }).format(value || 0);
 }
 
 function formatPercentage(value: number) {
-  return `${(value || 0).toFixed(1)}%`;
+    return `${(value || 0).toFixed(1)}%`;
 }
 
 export default function GlobalStats() {
-  const [data, setData] = useState<GlobalStatsPayload['stats'] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+    const [data, setData] = useState<GlobalStatsPayload['stats'] | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+    useEffect(() => {
+        let isMounted = true;
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/stats/global');
+                if (!res.ok) throw new Error('Failed to fetch global stats');
+                const payload: GlobalStatsPayload = await res.json();
+                if (!isMounted) return;
+                setData(payload.stats);
+                setError(null);
+            } catch (err) {
+                if (!isMounted) return;
+                setError(err instanceof Error ? err.message : 'Unable to load mission control');
+            }
+        };
+        fetchStats();
+        const interval = setInterval(fetchStats, 5000);
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, []);
 
-    const fetchStats = async () => {
-      try {
-        const res = await fetch('/api/stats/global');
-        if (!res.ok) throw new Error('Failed to fetch global stats');
-        const payload: GlobalStatsPayload = await res.json();
-        if (!isMounted) return;
-        setData(payload.stats);
-        setError(null);
-      } catch (err) {
-        if (!isMounted) return;
-        setError(err instanceof Error ? err.message : 'Unable to load mission control');
-      }
-    };
+    const cards = [
+        {
+            title: 'Fraud Prevented',
+            value: formatCurrency(data?.totalFraudPrevented ?? 0),
+            subtitle: data ? `${data.totalCases} cases audited` : 'Scanning ledger...',
+            icon: '🛡️',
+            color: 'blue'
+        },
+        {
+            title: 'Efficiency Gain',
+            value: formatCurrency(data?.efficiencyGain ?? 0),
+            subtitle: data ? `${data.lowRiskCasesAvoided} optimized steps` : 'Calculating...',
+            icon: '⚡',
+            color: 'emerald'
+        },
+        {
+            title: 'Verdict Accuracy',
+            value: formatPercentage(data?.averageConfidence ?? 0),
+            subtitle: data ? `${data.arbiterDecisions} arbitrations` : 'Syncing...',
+            icon: '⚖️',
+            color: 'indigo'
+        },
+    ];
 
-    fetchStats();
-    const interval = setInterval(fetchStats, 5000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  const cards = [
-    {
-      title: 'Total Fraud Prevented',
-      value: formatCurrency(data?.totalFraudPrevented ?? 0),
-      subtitle: data ? `${data.totalCases} completed cases` : 'Monitoring ledger...',
-      accent: 'gold' as const,
-      icon: '🛡️',
-    },
-    {
-      title: 'Efficiency Gain',
-      value: formatCurrency(data?.efficiencyGain ?? 0),
-      subtitle: data
-        ? `${data.lowRiskCasesAvoided} low-risk cases skipped network signal`
-        : 'Calibrating budgets...',
-      accent: 'silver' as const,
-      icon: '⚙️',
-    },
-    {
-      title: 'System Accuracy',
-      value: formatPercentage(data?.averageConfidence ?? 0),
-      subtitle: data ? `${data.arbiterDecisions} tribunal verdicts` : 'Aligning arbiters...',
-      accent: 'gold' as const,
-      icon: '⚖️',
-    },
-  ];
-
-  return (
-    <section
-      className="rounded-3xl border border-[#1C1C20] bg-gradient-to-br from-[#0D0D10] via-[#0B0B0F] to-[#050506] p-6 text-white shadow-[0_25px_70px_rgba(0,0,0,0.65)]"
-      aria-label="Global Mission Control"
-    >
-      <div className="flex flex-col gap-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#C0C0C0]">
-          Mission Control
-        </p>
-        <h2 className="text-3xl font-semibold text-white">Global Intelligence Dashboard</h2>
-        <p className="text-sm text-gray-400">
-          Live aggregation from MongoDB Atlas · proves scale beyond a single case.
-        </p>
-        {error && <p className="text-sm text-red-400">{error}</p>}
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        {cards.map((card) => {
-          const theme = cardThemes[card.accent];
-          return (
-            <div
-              key={card.title}
-              className={`${cardBase} ${theme.border} ${theme.glow}`}
-            >
-              <div className="flex items-center justify-between text-sm text-gray-400">
-                <span>{card.title}</span>
-                <span>{card.icon}</span>
-              </div>
-              <p className={`text-4xl font-bold ${theme.text}`}>{card.value}</p>
-              <p className="text-xs text-gray-500">{card.subtitle}</p>
+    return (
+        <section className="bg-white rounded-[2.5rem] border border-gray-100 p-10 shadow-2xl shadow-gray-200/20">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+                <div>
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em]">Mission Control Live</p>
+                    </div>
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">Global Intelligence Network</h2>
+                    <p className="text-gray-500 font-medium text-sm mt-1">Real-time aggregate data from the distributed Nexus cluster.</p>
+                </div>
+                {error && <div className="px-4 py-2 bg-red-50 text-red-500 text-xs font-bold rounded-xl border border-red-100">{error}</div>}
             </div>
-          );
-        })}
-      </div>
-    </section>
-  );
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {cards.map((card) => (
+                    <div key={card.title} className="relative group">
+                        <div className={`absolute -inset-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-3xl blur opacity-0 group-hover:opacity-5 transition duration-500`}></div>
+                        <div className="relative bg-neutral-50/50 rounded-3xl p-8 border border-neutral-100 transition-all duration-300 group-hover:bg-white group-hover:border-blue-100">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl bg-white shadow-sm border border-neutral-100`}>
+                                    {card.icon}
+                                </div>
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{card.title}</span>
+                            </div>
+                            <p className="text-3xl font-black text-gray-900 mb-2">{card.value}</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{card.subtitle}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
 }
