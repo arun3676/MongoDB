@@ -18,12 +18,24 @@ if (!process.env.MONGODB_DB_NAME) {
 const MONGODB_URI = process.env.MONGODB_URI;
 const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME;
 
+// If the URI doesn't include SSL parameters, add them
+let connectionUri = MONGODB_URI;
+if (!MONGODB_URI.includes('ssl=')) {
+  connectionUri = MONGODB_URI + (MONGODB_URI.includes('?') ? '&' : '?') + 'ssl=true&tlsAllowInvalidCertificates=false';
+}
+
 // Connection options for production use
 const options = {
   maxPoolSize: 10,
   minPoolSize: 2,
   serverSelectionTimeoutMS: 10000, // 10 seconds
   socketTimeoutMS: 45000, // 45 seconds
+  tls: true,
+  // SSL settings for compatibility
+  tlsAllowInvalidCertificates: false,
+  tlsAllowInvalidHostnames: false,
+  // Add retry options for better resilience
+  maxIdleTimeMS: 30000,
 };
 
 // Global connection cache to avoid multiple connections in development
@@ -40,13 +52,13 @@ if (process.env.NODE_ENV === 'development') {
   // In development, use a global variable to preserve the connection
   // across hot reloads
   if (!globalWithMongo._mongoClientPromise) {
-    const client = new MongoClient(MONGODB_URI, options);
+    const client = new MongoClient(connectionUri, options);
     globalWithMongo._mongoClientPromise = client.connect();
   }
   clientPromise = globalWithMongo._mongoClientPromise;
 } else {
   // In production, create a new connection
-  const client = new MongoClient(MONGODB_URI, options);
+  const client = new MongoClient(connectionUri, options);
   clientPromise = client.connect();
 }
 

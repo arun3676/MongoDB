@@ -111,13 +111,24 @@ export async function runVOIAgent(transactionId: string) {
     // Step 4: Calculate VOI for each tool
     const voiDecisions = [];
     const purchaseList: string[] = [];
+    let economicRefusalCount = 0;
 
     for (const tool of tools) {
       const voi = calculateVOI(transaction, tool, suspicionScore);
 
-      const decision = voi.voi > 0 ? 'BUY' : 'SKIP';
+      // Economic safeguard: Refuse if cost exceeds expected loss
+      // This prevents buying expensive signals for low-value transactions
+      let decision = voi.voi > 0 ? 'BUY' : 'SKIP';
+      let reasoning = voi.reasoning;
 
-      console.log(`   ${tool.name}: VOI=$${voi.voi.toFixed(2)} → ${decision}`);
+      if (tool.price > voi.expectedLoss && voi.voi <= 0) {
+        decision = 'ECONOMIC_REFUSAL';
+        reasoning = `Information cost ($${tool.price.toFixed(2)}) exceeds risk mitigation value ($${voi.expectedLoss.toFixed(2)}); profitability preserved. VOI=${voi.voi.toFixed(2)}. This purchase would be irrational.`;
+        economicRefusalCount++;
+        console.log(`   ⚠️  ${tool.name}: ECONOMIC REFUSAL - Cost > Expected Loss`);
+      } else {
+        console.log(`   ${tool.name}: VOI=$${voi.voi.toFixed(2)} → ${decision}`);
+      }
 
       voiDecisions.push({
         timestamp: new Date(),
@@ -127,8 +138,11 @@ export async function runVOIAgent(transactionId: string) {
         expectedLoss: voi.expectedLoss,
         confidenceGain: voi.confidenceGain,
         voi: voi.voi,
+        voiScore: voi.voi, // Explicit VOI score for transparency
         decision,
-        reasoning: voi.reasoning,
+        reasoning,
+        isProfitable: voi.voi > 0,
+        isEconomicallyRational: tool.price <= voi.expectedLoss,
       });
 
       if (decision === 'BUY') {
@@ -138,6 +152,10 @@ export async function runVOIAgent(transactionId: string) {
           purchaseList.push(signalType);
         }
       }
+    }
+
+    if (economicRefusalCount > 0) {
+      console.log(`   💼 Economic rationality preserved: ${economicRefusalCount} unprofitable signals rejected`);
     }
 
     console.log(`   Purchase list: ${purchaseList.join(', ') || 'none'}`);
@@ -158,6 +176,11 @@ export async function runVOIAgent(transactionId: string) {
     }, 0);
 
     // Step 7: Log VOI analysis to timeline
+    const totalToolsConsidered = tools.length;
+    const toolsPurchased = purchaseList.length;
+    const toolsSkipped = voiDecisions.filter((d: any) => d.decision === 'SKIP').length;
+    const toolsRefused = economicRefusalCount;
+
     await db.collection(COLLECTIONS.AGENT_STEPS).insertOne({
       transactionId,
       stepNumber: 4, // VOI analysis is step 4
@@ -170,16 +193,29 @@ export async function runVOIAgent(transactionId: string) {
         toolsEvaluated: tools.length,
         suspicionScore,
         transactionAmount: transaction.amount,
+        expectedLoss: transaction.amount * suspicionScore,
       },
       output: {
         voiDecisions,
         purchaseList,
         estimatedCost,
         budgetRemaining: budget.remainingBudget - estimatedCost,
+        summary: {
+          totalConsidered: totalToolsConsidered,
+          purchased: toolsPurchased,
+          skipped: toolsSkipped,
+          economicRefusals: toolsRefused,
+        },
       },
 
       metadata: {
         voiFormula: '(confidence_gain × expected_loss) - tool_cost',
+        economicRationality: 'Signals rejected when cost exceeds expected loss',
+        transparencyFeatures: {
+          voiScoreStored: true,
+          profitabilityCalculated: true,
+          economicRefusalTracked: true,
+        },
       },
     });
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, ReactNode } from 'react';
+import PaymentProofCard from './PaymentProofCard';
 
 interface SignalData {
   riskScore?: number;
@@ -192,7 +193,15 @@ export default function SignalCard({ signal }: SignalCardProps) {
       {/* Full Data Modal/Expansion */}
       {showFullData && (
         <div className="mt-4 pt-4 border-t border-gray-300">
-          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Complete Signal Payload</p>
+          {/* x402 Payment Proof */}
+          <PaymentProofCard
+            signalType={signal.signalType}
+            cost={signal.cost}
+            purchasedAt={signal.purchasedAt}
+            paymentMethod="Coinbase CDP Wallet"
+          />
+
+          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2 mt-4">Complete Signal Payload</p>
           <div className="bg-white rounded-md p-3 overflow-x-auto max-h-96 overflow-y-auto">
             <pre className="text-xs text-gray-700">{JSON.stringify(signal.data, null, 2)}</pre>
           </div>
@@ -201,10 +210,8 @@ export default function SignalCard({ signal }: SignalCardProps) {
             <p>
               <strong>Expires:</strong> {formatTimestamp(signal.expiresAt)}
             </p>
-            <p className="mt-1">
-              <a href="#audit" className={`${config.color} hover:underline`}>
-                View x402 payment flow audit
-              </a>
+            <p className="mt-1 text-blue-600">
+              Economic proof: Agent autonomously paid ${signal.cost.toFixed(2)} via CDP wallet using x402 protocol
             </p>
           </div>
         </div>
