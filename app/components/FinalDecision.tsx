@@ -1,12 +1,54 @@
+'use client';
+
 interface FinalDecisionProps {
-  decision: 'APPROVE' | 'DENY';
-  confidence: number;
-  reasoning: string;
-  agentDecisionsCount: number;
-  signalsCount: number;
-  totalCost: number;
-  riskFactorsCount: number;
+  decision?: 'APPROVE' | 'DENY' | 'ALLOW' | 'BLOCK' | string;
+  confidence?: number;
+  reasoning?: string;
+  agentDecisionsCount?: number;
+  signalsCount?: number;
+  totalCost?: number;
+  riskFactorsCount?: number;
+  riskFactors?: string[];
   transactionId: string;
+  arbiterVerdict?: {
+    output?: {
+      reasoning?: string;
+      decision?: string;
+      confidence?: number;
+    };
+    metadata?: {
+      model?: string;
+    };
+  };
+  metadata?: {
+    llmModel?: string;
+  };
+}
+
+// Format model names to be user-friendly
+function formatModelName(model?: string): string {
+  if (!model) return 'Llama 3.3 70B';
+
+  const modelLower = model.toLowerCase();
+
+  if (modelLower.includes('llama-v3p3-70b') || modelLower.includes('llama-3.3-70b')) {
+    return 'Llama 3.3 70B';
+  }
+  if (modelLower.includes('llama-v3p1-405b') || modelLower.includes('llama-3.1-405b')) {
+    return 'Llama 3.1 405B';
+  }
+  if (modelLower.includes('llama-v3p1-70b') || modelLower.includes('llama-3.1-70b')) {
+    return 'Llama 3.1 70B';
+  }
+  if (modelLower.includes('gpt-4')) {
+    return 'GPT-4';
+  }
+  if (modelLower.includes('claude')) {
+    return 'Claude';
+  }
+
+  // Fallback: Return original or default
+  return model || 'Llama 3.3 70B';
 }
 
 export default function FinalDecision({
@@ -17,123 +59,168 @@ export default function FinalDecision({
   signalsCount,
   totalCost,
   riskFactorsCount,
+  riskFactors,
   transactionId,
+  arbiterVerdict,
+  metadata,
 }: FinalDecisionProps) {
-  const isApproved = decision === 'APPROVE';
-  const confidencePercent = ((confidence || 0) * 100).toFixed(1);
+  // Extract arbiter reasoning if available (priority over general reasoning)
+  const arbiterReasoning = arbiterVerdict?.output?.reasoning;
+  const arbiterDecision = arbiterVerdict?.output?.decision;
+  const arbiterConfidence = arbiterVerdict?.output?.confidence;
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  // Use arbiter data if available, otherwise fall back to finalDecision data
+  const finalReasoning = arbiterReasoning || reasoning || 'Analysis in progress...';
+  const finalDecision = arbiterDecision || decision || 'PENDING';
+  const finalConfidence = arbiterConfidence ?? confidence ?? 0;
+
+  // Extract model information
+  const modelName = formatModelName(
+    arbiterVerdict?.metadata?.model || metadata?.llmModel
+  );
+
+  // Normalize decision to handle variations
+  const normalizedDecision = (finalDecision?.toUpperCase() ?? 'PENDING') as string;
+  const isApproved = normalizedDecision === 'APPROVE' || normalizedDecision === 'ALLOW';
+  const isDenied = normalizedDecision === 'DENY' || normalizedDecision === 'BLOCK';
+  const isPending = !isApproved && !isDenied;
+
+  const confidenceValue = finalConfidence;
+  const confidencePercent = Math.round(confidenceValue * 100);
 
   return (
     <div
-      className={`rounded-lg shadow-lg p-6 border-2 ${
-        isApproved ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'
+      className={`relative w-full py-10 px-8 rounded-2xl animate-fade-in ${
+        isApproved
+          ? 'bg-gradient-to-br from-emerald-950/40 to-emerald-900/30 border-2 border-emerald-500/50'
+          : isDenied
+          ? 'bg-gradient-to-br from-orange-950/40 to-orange-900/30 border-2 border-orange-500/50'
+          : 'bg-gradient-to-br from-gray-900/40 to-gray-800/30 border-2 border-gray-600/50'
       }`}
+      style={{
+        boxShadow: isApproved
+          ? '0 0 60px rgba(0, 255, 194, 0.25)'
+          : isDenied
+          ? '0 0 60px rgba(255, 165, 2, 0.25)'
+          : '0 0 40px rgba(100, 100, 100, 0.2)',
+      }}
     >
-      {/* Hero Decision Display */}
-      <div className="text-center mb-6">
-        <div className="mb-3">
-          <span
-            className={`inline-block text-6xl ${isApproved ? 'text-green-600' : 'text-red-600'}`}
-            aria-hidden="true"
-          >
-            {isApproved ? '✓' : '✗'}
-          </span>
+      {/* Model Tech Badge - Top Right */}
+      <div className="absolute top-4 right-4">
+        <div className="badge-neutral text-xs">
+          Analysis by {modelName} via Fireworks AI
         </div>
-        <h2
-          className={`text-3xl font-bold mb-2 ${isApproved ? 'text-green-900' : 'text-red-900'}`}
-          role="status"
-          aria-live="polite"
+      </div>
+
+      {/* MASSIVE Verdict Header */}
+      <div className="text-center mb-8 mt-4">
+        <div
+          className={`inline-block px-16 py-8 rounded-3xl mb-8 transform transition-all duration-300 ${
+            isApproved
+              ? 'bg-gradient-to-br from-emerald-400 via-mint to-emerald-500 text-emerald-950'
+              : isDenied
+              ? 'bg-gradient-to-br from-orange-400 via-amber-400 to-orange-500 text-orange-950'
+              : 'bg-gradient-to-br from-gray-500 via-gray-400 to-gray-500 text-gray-950'
+          }`}
+          style={{
+            boxShadow: isApproved
+              ? '0 0 80px rgba(0, 255, 194, 0.4), inset 0 0 40px rgba(255, 255, 255, 0.2)'
+              : isDenied
+              ? '0 0 80px rgba(255, 165, 2, 0.4), inset 0 0 40px rgba(255, 255, 255, 0.2)'
+              : '0 0 40px rgba(100, 100, 100, 0.3)',
+          }}
         >
-          Transaction {isApproved ? 'APPROVED' : 'DENIED'}
-        </h2>
-        <p className="text-sm text-gray-600">Final Reviewer Decision</p>
-      </div>
-
-      {/* Confidence Gauge */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-semibold text-gray-700">Confidence Level</p>
-          <span className="text-2xl font-bold text-gray-900">{confidencePercent}%</span>
-        </div>
-        <div className="w-full bg-gray-300 rounded-full h-4 shadow-inner">
           <div
-            className={`h-4 rounded-full ${
+            className="text-7xl md:text-8xl font-black tracking-widest"
+            role="status"
+            aria-live="polite"
+          >
+            {isApproved ? 'APPROVED' : isDenied ? 'BLOCKED' : 'PENDING'}
+          </div>
+        </div>
+
+        {confidenceValue > 0 && (
+          <div className="flex items-center justify-center gap-4">
+            <span className="text-base font-semibold uppercase tracking-wide text-gray-300">
+              Confidence:
+            </span>
+            <span
+              className={`text-5xl font-black ${
+                isApproved ? 'text-emerald-400' : isDenied ? 'text-orange-400' : 'text-gray-400'
+              }`}
+            >
+              {confidencePercent}%
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Arbiter Reasoning - Primary Explanation */}
+      {finalReasoning && finalReasoning !== 'Analysis in progress...' && (
+        <div className="mb-8">
+          <div className="text-label mb-4 text-center">FINAL VERDICT REASONING</div>
+          <div
+            className={`glass-panel p-6 rounded-xl border-2 ${
               isApproved
-                ? 'bg-gradient-to-r from-green-400 to-green-600'
-                : 'bg-gradient-to-r from-red-400 to-red-600'
+                ? 'border-emerald-500/30'
+                : isDenied
+                ? 'border-orange-500/30'
+                : 'border-gray-600/30'
             }`}
-            style={{ width: `${confidencePercent}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Final Reasoning */}
-      <div className="mb-6">
-        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Final Reasoning</p>
-        <div className="bg-white rounded-md p-4 shadow-sm border border-gray-200">
-          <p className="text-sm text-gray-800 leading-relaxed">{reasoning}</p>
-        </div>
-      </div>
-
-      {/* Evidence Summary */}
-      <div className="mb-6">
-        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Evidence Summary</p>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-md p-3 shadow-sm border border-gray-200">
-            <p className="text-xs text-gray-500 mb-1">Agent Decisions</p>
-            <p className="text-2xl font-bold text-gray-900">{agentDecisionsCount}</p>
-            <p className="text-xs text-gray-600 mt-1">Aligned decisions</p>
-          </div>
-
-          <div className="bg-white rounded-md p-3 shadow-sm border border-gray-200">
-            <p className="text-xs text-gray-500 mb-1">Signals Purchased</p>
-            <p className="text-2xl font-bold text-gray-900">{signalsCount}</p>
-            <p className="text-xs text-gray-600 mt-1">${(totalCost || 0).toFixed(2)} total cost</p>
-          </div>
-
-          <div className="bg-white rounded-md p-3 shadow-sm border border-gray-200 col-span-2">
-            <p className="text-xs text-gray-500 mb-1">Risk Factors Identified</p>
-            <p className="text-2xl font-bold text-gray-900">{riskFactorsCount}</p>
-            <p className="text-xs text-gray-600 mt-1">
-              {riskFactorsCount === 0
-                ? 'No significant risks detected'
-                : riskFactorsCount > 5
-                  ? 'High risk transaction'
-                  : 'Moderate risk detected'}
+          >
+            <p className="text-base text-gray-200 leading-relaxed text-center">
+              {finalReasoning}
             </p>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <a
-          href={`/api/audit/${transactionId}`}
-          download={`fraud-audit-${transactionId}-${new Date().toISOString()}.json`}
-          className="bg-blue-600 text-white text-center py-3 px-4 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-        >
-          Download Audit Packet
-        </a>
+      {/* Evidence Summary Stats */}
+      {(agentDecisionsCount !== undefined || signalsCount !== undefined || riskFactorsCount !== undefined) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {agentDecisionsCount !== undefined && (
+            <div className="glass-panel p-5 rounded-xl text-center border border-gray-700/50">
+              <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide font-semibold">
+                Agent Decisions
+              </p>
+              <p className="text-4xl font-black mint-text">{agentDecisionsCount}</p>
+            </div>
+          )}
 
-        <button
-          onClick={scrollToTop}
-          className="bg-gray-100 text-gray-700 py-3 px-4 rounded-md font-medium hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
-        >
-          View Complete Timeline
-        </button>
-      </div>
+          {signalsCount !== undefined && (
+            <div className="glass-panel p-5 rounded-xl text-center border border-gray-700/50">
+              <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide font-semibold">
+                Signals Analyzed
+              </p>
+              <p className="text-4xl font-black mint-text">{signalsCount}</p>
+              {totalCost !== undefined && (
+                <p className="text-xs text-gray-500 mt-2 font-mono">
+                  ${totalCost.toFixed(2)} total cost
+                </p>
+              )}
+            </div>
+          )}
 
-      {/* Footer Note */}
-      <div className="mt-6 pt-4 border-t border-gray-300">
-        <p className="text-xs text-gray-600 text-center">
-          This decision was made by an autonomous multi-agent system with complete auditability.
-          <br />
-          All data stored in MongoDB Atlas with immutable audit trail.
-        </p>
-      </div>
+          {riskFactorsCount !== undefined && (
+            <div className="glass-panel p-5 rounded-xl text-center border border-gray-700/50">
+              <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide font-semibold">
+                Risk Indicators
+              </p>
+              <p
+                className={`text-4xl font-black ${
+                  riskFactorsCount === 0
+                    ? 'text-emerald-400'
+                    : riskFactorsCount > 5
+                    ? 'text-red-400'
+                    : 'text-orange-400'
+                }`}
+              >
+                {riskFactorsCount}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -62,6 +62,16 @@ export async function GET(
           },
         },
 
+        // Lookup payments (x402 ledger)
+        {
+          $lookup: {
+            from: COLLECTIONS.PAYMENTS,
+            localField: 'transactionId',
+            foreignField: 'transactionId',
+            as: 'payments',
+          },
+        },
+
         // Lookup signals
         {
           $lookup: {
@@ -82,6 +92,16 @@ export async function GET(
           },
         },
 
+        // Lookup budget
+        {
+          $lookup: {
+            from: COLLECTIONS.BUDGET,
+            localField: 'transactionId',
+            foreignField: 'transactionId',
+            as: 'budget',
+          },
+        },
+
         // Sort timeline chronologically
         {
           $addFields: {
@@ -89,6 +109,12 @@ export async function GET(
               $sortArray: {
                 input: '$timeline',
                 sortBy: { stepNumber: 1 },
+              },
+            },
+            payments: {
+              $sortArray: {
+                input: '$payments',
+                sortBy: { createdAt: 1 },
               },
             },
           },
@@ -200,6 +226,31 @@ export async function GET(
         purchasedBy: signal.purchasedBy,
         expiresAt: signal.expiresAt,
       })),
+
+      // Payments ledger entries (x402)
+      payments: (caseData.payments || []).map((payment: any) => ({
+        paymentId: payment.paymentId || payment._id?.toString(),
+        transactionId: payment.transactionId,
+        amount: payment.amount,
+        currency: payment.currency,
+        signalType: payment.signalType,
+        status: payment.status,
+        provider: payment.provider,
+        agentName: payment.agentName,
+        createdAt: payment.createdAt,
+        completedAt: payment.completedAt,
+        cdpDetails: payment.cdpDetails,
+        x402Details: payment.x402Details,
+        negotiationOutcome: payment.negotiationOutcome,
+        actualCost: payment.actualCost,
+      })),
+
+      // Budget data (for CostTracker live updates)
+      budget: caseData.budget && caseData.budget.length > 0 ? {
+        spentSoFar: caseData.budget[0].spentSoFar || 0,
+        startingBudget: caseData.budget[0].startingBudget || 0,
+        remainingBudget: caseData.budget[0].remainingBudget || 0,
+      } : null,
 
       // Agent decisions
       decisions: caseData.decisions.map((decision: any) => ({

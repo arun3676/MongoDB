@@ -1,59 +1,64 @@
-import Marketplace from './components/Marketplace';
-import IntegrationBanner from './components/IntegrationBanner';
+import GlobalStats from './components/GlobalStats';
+import SubmitForm from './components/SubmitForm';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-neutral-50 selection:bg-blue-100 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Navigation / Header */}
-        <header className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-black text-xl">M</span>
-              </div>
-              <span className="text-xl font-black tracking-tight text-gray-900 uppercase">Nexus Market</span>
-            </div>
-            <p className="text-gray-500 font-medium">The future of modular components and hardware.</p>
+    <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Mission Control Dashboard */}
+        <div className="mb-10">
+          <GlobalStats />
+        </div>
+
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold mb-4 text-gray-900">
+            Fraud Escalation Agent
+          </h1>
+          <p className="text-xl text-gray-600 mb-6">
+            Agentic fraud detection with x402 paywalled signals
+          </p>
+          <div className="flex justify-center gap-6 text-sm text-gray-500">
+            <span>✓ 4 Autonomous Agents</span>
+            <span>✓ MongoDB Atlas State</span>
+            <span>✓ Complete Audit Trail</span>
           </div>
+        </div>
 
-          <nav className="flex items-center gap-8 text-sm font-semibold text-gray-600">
-            <a href="#" className="text-blue-600">Marketplace</a>
-            <a href="#" className="hover:text-blue-600 transition-colors">Documentation</a>
-            <a href="#" className="bg-gray-900 text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl active:scale-95">
-              Dashboard
-            </a>
-          </nav>
-        </header>
+        {/* Submit Form */}
+        <SubmitForm />
 
-        {/* Hero Section Placeholder if needed, but we go straight to marketplace */}
-        <div className="mb-16">
-          <div className="mb-10">
-            <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
-              Featured Products
-            </h1>
-            <p className="text-gray-500 text-lg max-w-2xl font-medium">
-              Browse our selection of advanced technology. Every purchase is protected by our
-              <span className="text-blue-600 font-bold"> Autonomous Agentic Middleware</span>.
+        {/* Info Cards */}
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <div className="text-3xl mb-3">⚡</div>
+            <h3 className="font-semibold text-gray-900 mb-2">Multi-Agent System</h3>
+            <p className="text-sm text-gray-600">
+              Progressive escalation through L1 Analyst, L2 Analyst, and Final Reviewer agents.
             </p>
           </div>
 
-          {/* Marketplace Grid + Search */}
-          <Marketplace />
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <div className="text-3xl mb-3">🔒</div>
+            <h3 className="font-semibold text-gray-900 mb-2">x402 Protocol</h3>
+            <p className="text-sm text-gray-600">
+              Premium signals purchased via HTTP 402 Payment Required flow with full audit trail.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <div className="text-3xl mb-3">📊</div>
+            <h3 className="font-semibold text-gray-900 mb-2">MongoDB Atlas</h3>
+            <p className="text-sm text-gray-600">
+              Shared state, immutable audit ledger, and real-time aggregation pipelines.
+            </p>
+          </div>
         </div>
 
-        {/* Integration / Middleware Section */}
-        <IntegrationBanner />
-
         {/* Footer */}
-        <footer className="mt-24 pt-12 border-t border-gray-200 pb-12 flex flex-col md:flex-row justify-between items-center gap-6 text-gray-500 text-sm font-medium">
-          <p>© 2026 Nexus Market & Fraud Agents. Built on MongoDB Atlas.</p>
-          <div className="flex gap-8">
-            <a href="#" className="hover:text-gray-900 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-gray-900 transition-colors">Terms</a>
-            <a href="#" className="hover:text-gray-900 transition-colors">Support</a>
-          </div>
-        </footer>
+        <div className="mt-12 text-center text-sm text-gray-500">
+          <p>Built with Next.js, TypeScript, Tailwind CSS, Fireworks AI, and MongoDB Atlas</p>
+        </div>
       </div>
     </main>
   );

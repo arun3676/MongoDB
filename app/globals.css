@@ -1,21 +1,534 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   Carbon Mint Theme - Global Styles
+   Fintech Security Dashboard Aesthetic
+   ============================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core Colors */
+  --carbon: #121214;
+  --carbon-light: #1A1A1E;
+  --carbon-lighter: #242428;
+
+  /* Emerald Mint - Professional accent */
+  --mint: #10B981;
+  --mint-dim: rgba(16, 185, 129, 0.6);
+  --mint-glow: rgba(16, 185, 129, 0.15);
+
+  /* Bright accent (original mint) for special cases */
+  --accent: #00FFC2;
+  --accent-glow: rgba(0, 255, 194, 0.15);
+
+  /* Border Colors - More subtle */
+  --border-color: #2D2D30;
+  --border-light: #3A3A3D;
+  --border-dark: #1E1E20;
+
+  /* Text Colors - Softer and more sophisticated */
+  --text-primary: #E4E4E7;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  /* Semantic Colors */
+  --danger: #FF4757;
+  --warning: #F59E0B;
+  --success: #10B981;
+  --info: #00D4FF;
+
+  /* Layout */
+  --sidebar-width: 260px;
+  --header-height: 64px;
+
+  /* Glass Effect - Updated for new border color */
+  --glass-bg: rgba(26, 26, 30, 0.8);
+  --glass-border: rgba(45, 45, 48, 0.5);
+  --glass-blur: 12px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ============================================
+   Base Styles
+   ============================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--carbon);
+  color: var(--text-primary);
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* ============================================
+   Grid Background Pattern
+   ============================================ */
+
+.bg-grid {
+  background-color: var(--carbon);
+  background-image:
+    radial-gradient(circle at 50% 0%, var(--mint-glow) 0%, transparent 50%),
+    linear-gradient(var(--border-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
+  background-position: center top, 0 0, 0 0;
+}
+
+.bg-grid-subtle {
+  background-color: var(--carbon);
+  background-image:
+    linear-gradient(rgba(45, 45, 48, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 45, 48, 0.3) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.bg-grid-dots {
+  background-color: var(--carbon);
+  background-image: radial-gradient(circle at 1px 1px, var(--border-color) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* ============================================
+   Glassmorphism Utilities
+   ============================================ */
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+}
+
+.glass-card {
+  background: rgba(26, 26, 30, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.glass-sidebar {
+  background: rgba(18, 18, 20, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border-color);
+}
+
+.glass-panel {
+  background: linear-gradient(
+    135deg,
+    rgba(26, 26, 30, 0.9) 0%,
+    rgba(26, 26, 30, 0.7) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+}
+
+/* ============================================
+   Card Styles
+   ============================================ */
+
+.card {
+  background-color: var(--carbon-light);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--border-light);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.card-highlight {
+  background: linear-gradient(
+    135deg,
+    var(--carbon-light) 0%,
+    var(--carbon-lighter) 100%
+  );
+  border: 1px solid var(--mint);
+  box-shadow: 0 0 20px var(--mint-glow);
+}
+
+/* ============================================
+   Mint Accent Styles
+   ============================================ */
+
+.mint-glow {
+  box-shadow: 0 0 20px var(--mint-glow);
+}
+
+.mint-border {
+  border-color: var(--mint);
+}
+
+.mint-text {
+  color: var(--mint);
+}
+
+.mint-gradient {
+  background: linear-gradient(135deg, var(--mint) 0%, #00D4AA 100%);
+}
+
+/* ============================================
+   Button Styles
+   ============================================ */
+
+.btn-primary {
+  background: var(--mint);
+  color: var(--carbon);
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #34D399;
+  box-shadow: 0 0 20px var(--mint-glow);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background: var(--carbon-lighter);
+  color: var(--text-primary);
+}
+
+/* ============================================
+   Status Indicators
+   ============================================ */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot-success {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.status-dot-warning {
+  background: var(--warning);
+  box-shadow: 0 0 8px var(--warning);
+}
+
+.status-dot-danger {
+  background: var(--danger);
+  box-shadow: 0 0 8px var(--danger);
+}
+
+.status-dot-info {
+  background: var(--info);
+  box-shadow: 0 0 8px var(--info);
+}
+
+/* ============================================
+   Data Display / Monospace Elements
+   ============================================ */
+
+.mono {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+.data-value {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--carbon);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.code-block {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  background: var(--carbon);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* ============================================
+   Typography Utilities
+   ============================================ */
+
+.heading-lg {
+  font-size: 1.875rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+}
+
+.heading-md {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.heading-sm {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.text-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--carbon);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+/* Enhanced scrollbar for Agent Pulse horizontal scroll */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: rgba(23, 25, 35, 0.5);
+  border-radius: 3px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.4);
+  border-radius: 3px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.6);
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes pulse-mint {
+  0%, 100% {
+    box-shadow: 0 0 10px var(--mint-glow);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-pulse-mint {
+  animation: pulse-mint 2s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slide-in-left 0.3s ease-out;
+}
+
+/* ============================================
+   Layout Utilities
+   ============================================ */
+
+.sidebar-width {
+  width: var(--sidebar-width);
+}
+
+.main-content {
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+}
+
+/* ============================================
+   Focus States
+   ============================================ */
+
+*:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 3px var(--mint-glow);
+}
+
+/* ============================================
+   Form Elements
+   ============================================ */
+
+input,
+textarea,
+select {
+  background: var(--carbon);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* ============================================
+   Table Styles
+   ============================================ */
+
+.table-header {
+  background: var(--carbon);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.table-row {
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.15s ease;
+}
+
+.table-row:hover {
+  background: var(--carbon-lighter);
+}
+
+/* ============================================
+   Badge Styles
+   ============================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-danger {
+  background: rgba(255, 71, 87, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.badge-info {
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--info);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.badge-neutral {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-secondary);
+  border: 1px solid rgba(148, 163, 184, 0.3);
 }

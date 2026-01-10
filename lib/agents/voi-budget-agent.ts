@@ -32,6 +32,7 @@
 
 import { getDatabase, COLLECTIONS } from '../mongodb';
 import { runBuyerDecisionAgent } from './buyer-decision-agent';
+import { callLLM } from '../fireworks';
 
 /**
  * Run VOI/Budget Agent on a transaction
@@ -108,27 +109,34 @@ export async function runVOIAgent(transactionId: string) {
       },
     });
 
-    // Step 4: Calculate VOI for each tool
+    // Step 4: Calculate VOI for each tool (with negotiation support)
     const voiDecisions = [];
-    const purchaseList: string[] = [];
+    const purchaseList: Array<{ signalType: string; proposedPrice?: number; negotiationPitch?: string }> = [];
     let economicRefusalCount = 0;
 
     for (const tool of tools) {
       const voi = calculateVOI(transaction, tool, suspicionScore);
 
-      // Economic safeguard: Refuse if cost exceeds expected loss
-      // This prevents buying expensive signals for low-value transactions
-      let decision = voi.voi > 0 ? 'BUY' : 'SKIP';
-      let reasoning = voi.reasoning;
+      let decision: 'BUY' | 'SKIP' | 'NEGOTIATE' = voi.voi > 0 ? 'BUY' : 'SKIP';
+      let proposedPrice: number | undefined;
+      let negotiationPitch: string | undefined;
 
-      if (tool.price > voi.expectedLoss && voi.voi <= 0) {
-        decision = 'ECONOMIC_REFUSAL';
-        reasoning = `Information cost ($${tool.price.toFixed(2)}) exceeds risk mitigation value ($${voi.expectedLoss.toFixed(2)}); profitability preserved. VOI=${voi.voi.toFixed(2)}. This purchase would be irrational.`;
+      // If VOI is negative but close to zero, consider negotiation
+      if (voi.voi < 0 && voi.voi > -tool.price * 0.5) {
+        const negotiation = await generateNegotiation(transaction, tool, voi, suspicionScore);
+        if (negotiation.shouldNegotiate) {
+          decision = 'NEGOTIATE';
+          proposedPrice = negotiation.proposedPrice;
+          negotiationPitch = negotiation.pitch;
+        } else {
+          decision = 'SKIP';
+          economicRefusalCount++;
+        }
+      } else if (voi.voi < 0) {
         economicRefusalCount++;
-        console.log(`   ⚠️  ${tool.name}: ECONOMIC REFUSAL - Cost > Expected Loss`);
-      } else {
-        console.log(`   ${tool.name}: VOI=$${voi.voi.toFixed(2)} → ${decision}`);
       }
+
+      console.log(`   ${tool.name}: VOI=$${voi.voi.toFixed(2)} → ${decision}`);
 
       voiDecisions.push({
         timestamp: new Date(),
@@ -140,16 +148,18 @@ export async function runVOIAgent(transactionId: string) {
         voi: voi.voi,
         voiScore: voi.voi, // Explicit VOI score for transparency
         decision,
-        reasoning,
-        isProfitable: voi.voi > 0,
-        isEconomicallyRational: tool.price <= voi.expectedLoss,
+        reasoning: voi.reasoning,
       });
 
-      if (decision === 'BUY') {
+      if (decision === 'BUY' || decision === 'NEGOTIATE') {
         // Extract signal type from endpoint (e.g., /api/signals/velocity → velocity)
         const signalType = tool.endpoint.split('/').pop();
         if (signalType) {
-          purchaseList.push(signalType);
+          purchaseList.push({
+            signalType,
+            proposedPrice: decision === 'NEGOTIATE' ? proposedPrice : undefined,
+            negotiationPitch: decision === 'NEGOTIATE' ? negotiationPitch : undefined,
+          });
         }
       }
     }
@@ -158,7 +168,7 @@ export async function runVOIAgent(transactionId: string) {
       console.log(`   💼 Economic rationality preserved: ${economicRefusalCount} unprofitable signals rejected`);
     }
 
-    console.log(`   Purchase list: ${purchaseList.join(', ') || 'none'}`);
+    console.log(`   Purchase list: ${purchaseList.map(p => p.signalType).join(', ') || 'none'}`);
 
     // Step 5: Update budget with VOI decisions
     await db.collection(COLLECTIONS.BUDGET).updateOne(
@@ -170,9 +180,11 @@ export async function runVOIAgent(transactionId: string) {
     );
 
     // Step 6: Calculate estimated cost
-    const estimatedCost = purchaseList.reduce((sum, signalType) => {
-      const tool = tools.find((t: any) => t.endpoint.includes(signalType));
-      return sum + (tool?.price || 0);
+    const estimatedCost = purchaseList.reduce((sum, purchase) => {
+      const tool = tools.find((t: any) => t.endpoint.includes(purchase.signalType));
+      // Use proposed price if negotiating, otherwise use tool price
+      const cost = purchase.proposedPrice ?? tool?.price ?? 0;
+      return sum + cost;
     }, 0);
 
     // Step 7: Log VOI analysis to timeline
@@ -317,6 +329,92 @@ function calculateVOI(
     voi,
     reasoning,
   };
+}
+
+/**
+ * Generate a negotiation pitch for a signal purchase
+ *
+ * Uses LLM to create a reasoned argument for why the agent can't pay full price
+ */
+async function generateNegotiation(
+  transaction: any,
+  tool: any,
+  voi: { voi: number; expectedLoss: number; confidenceGain: number },
+  suspicionScore: number
+): Promise<{
+  shouldNegotiate: boolean;
+  proposedPrice?: number;
+  pitch?: string;
+}> {
+  try {
+    // Calculate a proposed price (20-40% discount based on how negative the VOI is)
+    const fullPrice = tool.price;
+    const voiDeficit = Math.abs(voi.voi);
+
+    // More negative VOI = bigger discount needed
+    // Map VOI deficit to discount percentage (20-40%)
+    let discountPercentage = 0.20; // Start at 20%
+    if (voiDeficit > fullPrice * 0.5) {
+      discountPercentage = 0.40; // Max 40% discount
+    } else {
+      discountPercentage = 0.20 + (voiDeficit / fullPrice) * 0.20; // Scale between 20-40%
+    }
+
+    const proposedPrice = Math.max(
+      fullPrice * (1 - discountPercentage),
+      0.01 // Minimum $0.01
+    );
+
+    // Use LLM to generate a reasoned negotiation pitch
+    const systemPrompt = `You are an economic negotiator for a fraud detection AI agent. Your job is to generate persuasive, logical arguments for why a fraud signal should be purchased at a discounted price.
+
+You must be SPECIFIC and QUANTITATIVE in your reasoning. Explain the economic constraints and value proposition clearly.`;
+
+    const userPrompt = `Generate a negotiation pitch for purchasing a fraud detection signal at a discounted price.
+
+TRANSACTION DETAILS:
+- Transaction Amount: $${transaction.amount.toFixed(2)}
+- Suspicion Score: ${(suspicionScore * 100).toFixed(0)}% (${suspicionScore < 0.5 ? 'LOW' : suspicionScore < 0.7 ? 'MEDIUM' : 'HIGH'} risk)
+- Expected Loss if Fraudulent: $${voi.expectedLoss.toFixed(2)}
+
+SIGNAL DETAILS:
+- Signal Name: ${tool.name}
+- Full Price: $${fullPrice.toFixed(2)}
+- Expected Confidence Gain: ${(voi.confidenceGain * 100).toFixed(0)}%
+- Value of Information (VOI): $${voi.voi.toFixed(2)} (NEGATIVE - not economically justified at full price)
+
+PROPOSED PRICE: $${proposedPrice.toFixed(2)} (${(discountPercentage * 100).toFixed(0)}% discount)
+
+Generate a concise negotiation pitch (2-3 sentences) explaining why:
+1. The full price doesn't make economic sense for this specific transaction
+2. The proposed discounted price is fair and mutually beneficial
+3. The signal still provides value at the lower price
+
+Return JSON in this format:
+{
+  "pitch": "Your 2-3 sentence negotiation pitch here",
+  "shouldNegotiate": true
+}
+
+Be SPECIFIC about the numbers. For example, mention that "this $${transaction.amount} transaction" or "a $${fullPrice} signal eats ${((fullPrice / transaction.amount) * 100).toFixed(0)}% of the transaction value."`;
+
+    const response = await callLLM<{
+      pitch: string;
+      shouldNegotiate: boolean;
+    }>(systemPrompt, userPrompt, { type: 'json_object' });
+
+    return {
+      shouldNegotiate: response.shouldNegotiate,
+      proposedPrice: response.shouldNegotiate ? proposedPrice : undefined,
+      pitch: response.pitch,
+    };
+  } catch (error) {
+    console.error('Negotiation generation failed:', error);
+    // Fallback: don't negotiate if LLM fails
+    return {
+      shouldNegotiate: false,
+    };
+  }
 }
 
 /**
