@@ -16,6 +16,7 @@
 
 import { callLLM, formatTransactionForLLM, formatSignalForLLM } from '../fireworks';
 import { getDatabase, COLLECTIONS } from '../mongodb';
+import { getRerankedResults } from '../voyage';
 
 export interface DefenseArgument {
   position: 'APPROVE';
@@ -94,6 +95,102 @@ export async function runDebateAgent(
   console.log(`   🛡️  Defense: ${defenseArgument.confidence * 100}% confident in APPROVE`);
   console.log(`   ⚔️  Prosecution: ${prosecutionArgument.confidence * 100}% confident in DENY`);
 
+  // ==========================================================================
+  // VOYAGE RERANKER: Score Evidence Relevance (Elite Feature)
+  // ==========================================================================
+  // Before the Arbiter makes a decision, use Voyage Reranker to score how
+  // relevant each side's evidence points are to the actual transaction data.
+  //
+  // WHY RERANKING?
+  // - Defense and Prosecution may cite evidence that sounds good but isn't
+  //   actually relevant to THIS specific transaction
+  // - Reranker uses cross-encoder model (rerank-2.5) to score factual relevance
+  // - Higher scores = evidence is more grounded in transaction data
+  // - Arbiter can weight arguments by factual relevance, not just persuasiveness
+  //
+  // HOW IT WORKS:
+  // 1. Collect all evidence points from both sides (keyPoints, factors)
+  // 2. Create query from original transaction data (ground truth)
+  // 3. Rerank evidence points by relevance to transaction
+  // 4. Pass relevance scores to Arbiter for weighted decision
+  // ==========================================================================
+
+  console.log(`   🔍 [Voyage Reranker] Scoring evidence relevance against transaction data...`);
+
+  // Collect all evidence points from both sides
+  const defenseEvidencePoints = [
+    defenseArgument.reasoning,
+    ...(defenseArgument.keyPoints || []),
+    ...(defenseArgument.mitigatingFactors || []),
+  ];
+
+  const prosecutionEvidencePoints = [
+    prosecutionArgument.reasoning,
+    ...(prosecutionArgument.keyPoints || []),
+    ...(prosecutionArgument.aggravatingFactors || []),
+  ];
+
+  // Create query from original transaction data (the ground truth)
+  const transactionQuery = `Transaction details: ${evidence.transaction}\n\nSignals: ${evidence.signals}`;
+
+  // Rerank evidence points from both sides
+  let defenseRerankScores: Array<{ text: string; score: number; index: number }> = [];
+  let prosecutionRerankScores: Array<{ text: string; score: number; index: number }> = [];
+
+  try {
+    // Rerank Defense evidence
+    if (defenseEvidencePoints.length > 0) {
+      defenseRerankScores = await getRerankedResults(
+        transactionQuery,
+        defenseEvidencePoints,
+        defenseEvidencePoints.length // Rerank all points
+      );
+
+      if (defenseRerankScores && defenseRerankScores.length > 0) {
+        const avgDefenseScore =
+          defenseRerankScores.reduce((sum, r) => sum + r.score, 0) / defenseRerankScores.length;
+        console.log(
+          `   ✅ [Voyage Reranker] Defense evidence relevance: ${(avgDefenseScore * 100).toFixed(1)}% (${defenseRerankScores.length} points)`
+        );
+      }
+    }
+
+    // Rerank Prosecution evidence
+    if (prosecutionEvidencePoints.length > 0) {
+      prosecutionRerankScores = await getRerankedResults(
+        transactionQuery,
+        prosecutionEvidencePoints,
+        prosecutionEvidencePoints.length // Rerank all points
+      );
+
+      if (prosecutionRerankScores && prosecutionRerankScores.length > 0) {
+        const avgProsecutionScore =
+          prosecutionRerankScores.reduce((sum, r) => sum + r.score, 0) / prosecutionRerankScores.length;
+        console.log(
+          `   ✅ [Voyage Reranker] Prosecution evidence relevance: ${(avgProsecutionScore * 100).toFixed(1)}% (${prosecutionRerankScores.length} points)`
+        );
+      }
+    }
+  } catch (error) {
+    console.error(`   ⚠️ [Voyage Reranker] Failed to rerank evidence:`, error);
+    // Continue without rerank scores - Arbiter will proceed without them
+  }
+
+  // Calculate average relevance scores for each side
+  const defenseAvgRelevance =
+    defenseRerankScores && defenseRerankScores.length > 0
+      ? defenseRerankScores.reduce((sum, r) => sum + r.score, 0) / defenseRerankScores.length
+      : null;
+
+  const prosecutionAvgRelevance =
+    prosecutionRerankScores && prosecutionRerankScores.length > 0
+      ? prosecutionRerankScores.reduce((sum, r) => sum + r.score, 0) / prosecutionRerankScores.length
+      : null;
+
+  // ==========================================================================
+  // END VOYAGE RERANKER
+  // ==========================================================================
+
   // Log both arguments to timeline (in parallel)
   const defenseStepTime = Date.now();
   const prosecutionStepTime = Date.now();
@@ -141,10 +238,18 @@ export async function runDebateAgent(
     }),
   ]);
 
-  // Arbiter sees BOTH arguments and decides
-  console.log(`   👨‍⚖️ Arbiter reviewing both arguments...`);
+  // Arbiter sees BOTH arguments and decides (with Voyage Rerank scores)
+  console.log(`   👨‍⚖️ Arbiter reviewing both arguments with Voyage Rerank relevance scores...`);
 
-  const arbiterVerdict = await generateArbiterVerdict(evidence, defenseArgument, prosecutionArgument);
+  const arbiterVerdict = await generateArbiterVerdict(
+    evidence,
+    defenseArgument,
+    prosecutionArgument,
+    defenseRerankScores,
+    prosecutionRerankScores,
+    defenseAvgRelevance,
+    prosecutionAvgRelevance
+  );
 
   console.log(`   👨‍⚖️ Arbiter verdict: ${arbiterVerdict.decision} (${(arbiterVerdict.confidence * 100).toFixed(0)}% confident)`);
   console.log(`      Defense strength: ${(arbiterVerdict.defenseStrength * 100).toFixed(0)}%`);
@@ -163,11 +268,16 @@ export async function runDebateAgent(
       prosecutionPosition: prosecutionArgument.reasoning.substring(0, 150) + '...',
     },
     output: arbiterVerdict,
-    metadata: {
-      debateRole: 'arbiter',
-      isFinal: true,
-      llmModel: 'llama-v3p3-70b-instruct',
-    },
+      metadata: {
+        debateRole: 'arbiter',
+        isFinal: true,
+        llmModel: 'llama-v3p3-70b-instruct',
+        voyageRerank: {
+          defenseAvgRelevance: defenseAvgRelevance,
+          prosecutionAvgRelevance: prosecutionAvgRelevance,
+          rerankModel: 'rerank-2.5',
+        },
+      },
   });
 
   // Log debate decision to decisions collection
@@ -183,15 +293,20 @@ export async function runDebateAgent(
     signalsUsed: signals.map((s) => s.signalType),
     timestamp: new Date(),
     isFinal: false, // Buyer agent makes final decision based on this
-    metadata: {
-      debateDetails: {
-        defenseConfidence: defenseArgument.confidence,
-        prosecutionConfidence: prosecutionArgument.confidence,
-        defenseStrength: arbiterVerdict.defenseStrength,
-        prosecutionStrength: arbiterVerdict.prosecutionStrength,
-        decidingFactors: arbiterVerdict.decidingFactors,
+      metadata: {
+        debateDetails: {
+          defenseConfidence: defenseArgument.confidence,
+          prosecutionConfidence: prosecutionArgument.confidence,
+          defenseStrength: arbiterVerdict.defenseStrength,
+          prosecutionStrength: arbiterVerdict.prosecutionStrength,
+          decidingFactors: arbiterVerdict.decidingFactors,
+          voyageRerank: {
+            defenseAvgRelevance: defenseAvgRelevance,
+            prosecutionAvgRelevance: prosecutionAvgRelevance,
+            rerankModel: 'rerank-2.5',
+          },
+        },
       },
-    },
   });
 
   console.log(`✅ [Debate Agent] Tribunal complete: ${arbiterVerdict.decision}`);
@@ -319,6 +434,7 @@ Argue for DENIAL. Return JSON:
 
 /**
  * Generate the Arbiter verdict (weighs both sides, makes final call)
+ * Now includes Voyage Rerank relevance scores for evidence weighting
  */
 async function generateArbiterVerdict(
   evidence: {
@@ -327,7 +443,11 @@ async function generateArbiterVerdict(
     previousAgentDecisions: string;
   },
   defense: DefenseArgument,
-  prosecution: ProsecutionArgument
+  prosecution: ProsecutionArgument,
+  defenseRerankScores: Array<{ text: string; score: number; index: number }> = [],
+  prosecutionRerankScores: Array<{ text: string; score: number; index: number }> = [],
+  defenseAvgRelevance: number | null = null,
+  prosecutionAvgRelevance: number | null = null
 ): Promise<ArbiterVerdict> {
   const systemPrompt = `You are the ARBITER AGENT - the final judge in this fraud tribunal.
 
@@ -335,16 +455,26 @@ You have heard both sides:
 - DEFENSE argues for approval
 - PROSECUTION argues for denial
 
-Your job: Weigh both arguments FAIRLY and deliver the final verdict.
+**IMPORTANT: You have been provided with Rerank scores from Voyage AI (rerank-2.5 model) indicating the factual relevance of each side's evidence points to the actual transaction data.**
 
-Consider:
+These relevance scores show how well-grounded each side's arguments are in the transaction facts:
+- Higher relevance scores (closer to 1.0) = evidence is more factually relevant to THIS transaction
+- Lower relevance scores (closer to 0.0) = evidence may be persuasive but less grounded in transaction data
+
+**USE THESE SCORES TO WEIGH THE ARGUMENTS:**
+- If one side has significantly higher relevance scores, their evidence is more factually grounded
+- Prefer arguments with higher relevance scores - they're more likely to be accurate
+- However, still consider argument quality, logic, and completeness
+
+Your job: Weigh both arguments FAIRLY using:
 1. Strength of each argument's logic
-2. Quality of evidence cited by each side
-3. Logical consistency of their reasoning
-4. Risk vs benefit analysis
-5. Cost of false positives (blocking legitimate users) vs false negatives (allowing fraud)
+2. **Factual relevance scores from Voyage Reranker (CRITICAL)**
+3. Quality of evidence cited by each side
+4. Logical consistency of their reasoning
+5. Risk vs benefit analysis
+6. Cost of false positives (blocking legitimate users) vs false negatives (allowing fraud)
 
-You must be IMPARTIAL. The better argument wins, regardless of position.
+You must be IMPARTIAL. The better argument wins, regardless of position, but prioritize factually grounded evidence.
 
 Return your verdict as JSON with these exact fields.`;
 
@@ -359,12 +489,42 @@ Confidence: ${(defense.confidence * 100).toFixed(0)}%
 Reasoning: ${defense.reasoning}
 Key Points: ${defense.keyPoints?.join(', ') || 'None provided'}
 Mitigating Factors: ${defense.mitigatingFactors?.join(', ') || 'None provided'}
+${
+  defenseAvgRelevance !== null
+    ? `\n**VOYAGE RERANK RELEVANCE SCORE: ${(defenseAvgRelevance * 100).toFixed(1)}%**\nThis score indicates how factually relevant the Defense's evidence points are to the actual transaction data. Higher scores mean the evidence is more grounded in transaction facts.`
+    : '\n**VOYAGE RERANK SCORES: Unavailable**'
+}
+${
+  defenseRerankScores && defenseRerankScores.length > 0
+    ? `\nDefense Evidence Point Relevance Scores:\n${defenseRerankScores
+        .map((r, i) => `  ${i + 1}. ${r.text.substring(0, 100)}... → Relevance: ${(r.score * 100).toFixed(1)}%`)
+        .join('\n')}`
+    : ''
+}
 
 PROSECUTION ARGUMENT (Argues for DENY):
 Confidence: ${(prosecution.confidence * 100).toFixed(0)}%
 Reasoning: ${prosecution.reasoning}
 Key Points: ${prosecution.keyPoints?.join(', ') || 'None provided'}
 Aggravating Factors: ${prosecution.aggravatingFactors?.join(', ') || 'None provided'}
+${
+  prosecutionAvgRelevance !== null
+    ? `\n**VOYAGE RERANK RELEVANCE SCORE: ${(prosecutionAvgRelevance * 100).toFixed(1)}%**\nThis score indicates how factually relevant the Prosecution's evidence points are to the actual transaction data. Higher scores mean the evidence is more grounded in transaction facts.`
+    : '\n**VOYAGE RERANK SCORES: Unavailable**'
+}
+${
+  prosecutionRerankScores && prosecutionRerankScores.length > 0
+    ? `\nProsecution Evidence Point Relevance Scores:\n${prosecutionRerankScores
+        .map((r, i) => `  ${i + 1}. ${r.text.substring(0, 100)}... → Relevance: ${(r.score * 100).toFixed(1)}%`)
+        .join('\n')}`
+    : ''
+}
+
+**INSTRUCTIONS:**
+- Compare the Voyage Rerank relevance scores for both sides
+- If one side has significantly higher relevance scores, their evidence is more factually grounded
+- Use these scores to weight your decision - prefer factually grounded evidence
+- Still consider argument quality and logic, but prioritize relevance scores
 
 DELIVER YOUR VERDICT. Return JSON:
 {

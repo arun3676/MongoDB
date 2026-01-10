@@ -1,12 +1,68 @@
 /**
- * Database Initialization
+ * Database Initialization - WITH VECTOR SEARCH SUPPORT
  *
  * Creates collections and indexes for the fraud detection system.
  * Safe to call multiple times - only creates if missing.
+ *
+ * ============================================================================
+ * 🎯 SEMANTIC SEARCH CAPABILITY
+ * ============================================================================
+ * This initialization now includes VECTOR EMBEDDINGS for:
+ * 1. Tool metadata (descriptions + capabilities)
+ * 2. Policy descriptions
+ *
+ * WHY EMBEDDINGS?
+ * - Enable semantic tool discovery ("find tools for velocity fraud")
+ * - Policy matching based on meaning, not just keywords
+ * - Agent can understand tool capabilities through natural language
+ *
+ * AFTER RUNNING THIS SCRIPT:
+ * You MUST create a Vector Search Index in MongoDB Atlas UI:
+ *
+ * 1. Go to MongoDB Atlas → Your Cluster → Search
+ * 2. Click "Create Search Index"
+ * 3. Choose "JSON Editor"
+ * 4. Use this configuration:
+ *
+ * {
+ *   "fields": [
+ *     {
+ *       "type": "vector",
+ *       "path": "embedding",
+ *       "numDimensions": 1024,
+ *       "similarity": "cosine"
+ *     }
+ *   ]
+ * }
+ *
+ * 5. Name it: "vector_index"
+ * 6. Collection: "tool_metadata"
+ * 7. Click "Create Search Index"
+ * 8. Wait 1-2 minutes for index to build
+ *
+ * REPEAT FOR POLICIES COLLECTION:
+ * - Same configuration
+ * - Collection: "policies"
+ * - Name: "policies_vector_index"
+ *
+ * This enables agents to query:
+ * db.collection('tool_metadata').aggregate([
+ *   {
+ *     $vectorSearch: {
+ *       index: "vector_index",
+ *       path: "embedding",
+ *       queryVector: [0.123, 0.456, ...], // 1024 dimensions
+ *       numCandidates: 100,
+ *       limit: 10
+ *     }
+ *   }
+ * ])
+ * ============================================================================
  */
 
 import { Db, Collection } from 'mongodb';
 import { getDatabase, COLLECTIONS } from './mongodb';
+import { getMatryoshkaEmbedding } from './voyage';
 
 // Track initialization state to avoid redundant calls
 let isInitialized = false;
@@ -183,14 +239,20 @@ async function createIndexes(db: Db): Promise<void> {
 }
 
 /**
- * Seed initial fraud detection policies
+ * Seed initial fraud detection policies WITH EMBEDDINGS
+ *
+ * Each policy gets a vector embedding for semantic search.
+ * Agents can find relevant policies using natural language queries.
+ *
+ * Example: "What policy handles high velocity fraud?"
+ * → Vector search finds "Velocity Threshold Policy" by semantic similarity
  */
 async function seedPolicies(db: Db): Promise<void> {
   const policiesCollection = db.collection(COLLECTIONS.POLICIES);
   const count = await policiesCollection.countDocuments();
 
   if (count === 0) {
-    console.log('  Seeding initial policies...');
+    console.log('  Seeding initial policies WITH EMBEDDINGS...');
 
     const policies = [
       {
@@ -286,20 +348,95 @@ async function seedPolicies(db: Db): Promise<void> {
       },
     ];
 
-    await policiesCollection.insertMany(policies);
-    console.log(`  ✓ Seeded ${policies.length} policies`);
+    // Generate embeddings for each policy
+    console.log('  📊 Generating policy embeddings with Voyage AI...');
+
+    const policiesWithEmbeddings: any[] = [];
+
+    for (const policy of policies) {
+      try {
+        // Combine name + description for rich semantic representation
+        const textToEmbed = `${policy.name}. ${policy.description}. Policy type: ${policy.type}`;
+
+        // Generate 1024-dim embedding (full precision for policy matching)
+        // Using 1024-dim instead of 256-dim because:
+        // - Policies are small in number (~10-20 total)
+        // - Need maximum accuracy for policy selection
+        // - Storage cost is negligible for small collections
+        const embedding = await getMatryoshkaEmbedding(textToEmbed, 1024);
+
+        if (embedding) {
+          policiesWithEmbeddings.push({
+            ...policy,
+            embedding: embedding,
+            embeddingMetadata: {
+              model: 'voyage-3',
+              dimensions: 1024,
+              generatedAt: new Date(),
+              textEmbedded: textToEmbed,
+            },
+          });
+          console.log(`    ✓ ${policy.name}: 1024-dim embedding generated`);
+        } else {
+          // Voyage AI failed - insert without embedding
+          console.warn(`    ⚠ ${policy.name}: Embedding failed, inserting without vector`);
+          policiesWithEmbeddings.push(policy);
+        }
+      } catch (error) {
+        console.error(`    ❌ ${policy.name}: Embedding error -`, error);
+        // Insert without embedding on error
+        policiesWithEmbeddings.push(policy);
+      }
+    }
+
+    await policiesCollection.insertMany(policiesWithEmbeddings);
+
+    const embeddedCount = policiesWithEmbeddings.filter((p) => p.embedding).length;
+    console.log(
+      `  ✓ Seeded ${policies.length} policies (${embeddedCount} with embeddings)`
+    );
+
+    if (embeddedCount > 0) {
+      console.log(
+        '\n  📌 REMINDER: Create Vector Search Index in MongoDB Atlas UI:'
+      );
+      console.log('     Collection: policies');
+      console.log('     Index Name: policies_vector_index');
+      console.log('     Field: embedding');
+      console.log('     Dimensions: 1024');
+      console.log('     Similarity: cosine');
+    }
   }
 }
 
 /**
- * Seed tool metadata for x402 Bazaar discovery
+ * Seed tool metadata for x402 Bazaar discovery WITH EMBEDDINGS
+ *
+ * SEMANTIC TOOL DISCOVERY:
+ * Instead of keyword matching, agents use natural language to find tools.
+ *
+ * Traditional approach:
+ * - Agent hardcodes: "I need velocity signal"
+ * - Limited to exact matches
+ *
+ * Semantic approach:
+ * - Agent asks: "Find tools that detect rapid spending patterns"
+ * - Vector search finds: Velocity Signal (0.89 similarity)
+ * - Discovers tools by MEANING, not keywords
+ *
+ * Each tool gets embedding based on:
+ * - Tool name
+ * - Description
+ * - Capabilities array (joined as text)
+ *
+ * This enables dynamic tool discovery at runtime!
  */
 async function seedToolMetadata(db: Db): Promise<void> {
   const toolsCollection = db.collection(COLLECTIONS.TOOL_METADATA);
   const count = await toolsCollection.countDocuments();
 
   if (count === 0) {
-    console.log('  Seeding tool metadata...');
+    console.log('  Seeding tool metadata WITH EMBEDDINGS...');
 
     const tools = [
       {
@@ -342,8 +479,79 @@ async function seedToolMetadata(db: Db): Promise<void> {
       },
     ];
 
-    await toolsCollection.insertMany(tools);
-    console.log(`  ✓ Seeded ${tools.length} tools`);
+    // Generate embeddings for each tool
+    console.log('  📊 Generating tool embeddings with Voyage AI...');
+
+    const toolsWithEmbeddings: any[] = [];
+
+    for (const tool of tools) {
+      try {
+        // Combine name, description, and capabilities for rich semantic search
+        // Example: "Velocity Signal. Transaction velocity and burst detection...
+        //           Capabilities: transaction_history, burst_detection, account_age..."
+        const textToEmbed = `${tool.name}. ${tool.description}. Capabilities: ${tool.capabilities.join(', ')}`;
+
+        // Generate 1024-dim embedding (full precision for tool discovery)
+        // Using 1024-dim because:
+        // - Tool discovery is critical (wrong tool = wasted money)
+        // - Small number of tools (~10-20 in bazaar)
+        // - Maximum accuracy needed for semantic matching
+        const embedding = await getMatryoshkaEmbedding(textToEmbed, 1024);
+
+        if (embedding) {
+          toolsWithEmbeddings.push({
+            ...tool,
+            embedding: embedding,
+            embeddingMetadata: {
+              model: 'voyage-3',
+              dimensions: 1024,
+              generatedAt: new Date(),
+              textEmbedded: textToEmbed,
+            },
+          });
+          console.log(`    ✓ ${tool.name}: 1024-dim embedding generated`);
+        } else {
+          // Voyage AI failed - insert without embedding
+          console.warn(`    ⚠ ${tool.name}: Embedding failed, inserting without vector`);
+          toolsWithEmbeddings.push(tool);
+        }
+      } catch (error) {
+        console.error(`    ❌ ${tool.name}: Embedding error -`, error);
+        // Insert without embedding on error
+        toolsWithEmbeddings.push(tool);
+      }
+    }
+
+    await toolsCollection.insertMany(toolsWithEmbeddings);
+
+    const embeddedCount = toolsWithEmbeddings.filter((t) => t.embedding).length;
+    console.log(`  ✓ Seeded ${tools.length} tools (${embeddedCount} with embeddings)`);
+
+    if (embeddedCount > 0) {
+      console.log(
+        '\n  📌 IMPORTANT: Create Vector Search Index in MongoDB Atlas UI:'
+      );
+      console.log('     1. Go to: MongoDB Atlas → Your Cluster → Search');
+      console.log('     2. Click "Create Search Index"');
+      console.log('     3. Choose "JSON Editor"');
+      console.log('     4. Configuration:');
+      console.log('        {');
+      console.log('          "fields": [');
+      console.log('            {');
+      console.log('              "type": "vector",');
+      console.log('              "path": "embedding",');
+      console.log('              "numDimensions": 1024,');
+      console.log('              "similarity": "cosine"');
+      console.log('            }');
+      console.log('          ]');
+      console.log('        }');
+      console.log('     5. Index Name: vector_index');
+      console.log('     6. Collection: tool_metadata');
+      console.log('     7. Click "Create Search Index"');
+      console.log('     8. Wait 1-2 minutes for index to build');
+      console.log('\n  🎯 This enables SEMANTIC TOOL DISCOVERY!');
+      console.log('     Agents can find tools using natural language queries.');
+    }
   }
 }
 
