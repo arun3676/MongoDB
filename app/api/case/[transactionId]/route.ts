@@ -126,6 +126,17 @@ export async function GET(
       (d: any) => d.agentName === 'Final Reviewer' || d.isFinal === true
     );
 
+    // Extract debate data from Buyer Decision agent's metadata
+    const buyerDecision = caseData.decisions?.find(
+      (d: any) => d.agentName === 'Buyer Decision'
+    );
+
+    const debateData = buyerDecision?.metadata?.debateResult ? {
+      defense: buyerDecision.metadata.debateResult.defense,
+      prosecution: buyerDecision.metadata.debateResult.prosecution,
+      verdict: buyerDecision.metadata.debateResult.verdict
+    } : null;
+
     // Build finalDecision object for UI (only if status is COMPLETED)
     const finalDecisionObj =
       caseData.status === 'COMPLETED' && (caseData.finalDecision || finalDecisionRecord)
@@ -209,6 +220,9 @@ export async function GET(
 
       // Final decision object (only when COMPLETED)
       finalDecision: finalDecisionObj,
+
+      // Debate tribunal data (if available)
+      debate: debateData,
     };
 
     return NextResponse.json(response);

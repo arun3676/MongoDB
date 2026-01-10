@@ -8,6 +8,7 @@ import CostTracker from '../../components/CostTracker';
 import AgentTimeline from '../../components/AgentTimeline';
 import SignalCard from '../../components/SignalCard';
 import DecisionCard from '../../components/DecisionCard';
+import DebateCard from '../../components/DebateCard';
 import FinalDecision from '../../components/FinalDecision';
 import AuditDownload from '../../components/AuditDownload';
 
@@ -77,6 +78,28 @@ interface CaseData {
     signalsCount: number;
     totalCost: number;
     riskFactorsCount: number;
+  };
+  debate?: {
+    defense: {
+      confidence: number;
+      reasoning: string;
+      keyPoints?: string[];
+      mitigatingFactors?: string[];
+    };
+    prosecution: {
+      confidence: number;
+      reasoning: string;
+      keyPoints?: string[];
+      aggravatingFactors?: string[];
+    };
+    verdict: {
+      decision: 'APPROVE' | 'DENY';
+      confidence: number;
+      reasoning: string;
+      defenseStrength: number;
+      prosecutionStrength: number;
+      decidingFactors?: string[];
+    };
   };
 }
 
@@ -203,6 +226,15 @@ export default function CaseDetailPage() {
             {caseData.signals.map((signal) => (
               <SignalCard key={signal.signalId} signal={signal} />
             ))}
+
+            {/* Debate Tribunal (if available) */}
+            {caseData.debate && (
+              <DebateCard
+                defense={caseData.debate.defense}
+                prosecution={caseData.debate.prosecution}
+                verdict={caseData.debate.verdict}
+              />
+            )}
 
             {/* Decisions */}
             {caseData.decisions.map((decision) => (
