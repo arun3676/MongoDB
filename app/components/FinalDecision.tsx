@@ -63,68 +63,76 @@ export default function FinalDecision({
 
   return (
     <div
-      className={`relative w-full py-12 px-8 rounded-[2.5rem] bg-white border-2 shadow-2xl transition-all duration-500 ${isApproved ? 'border-emerald-500/20 shadow-emerald-500/10' :
-          isDenied ? 'border-red-500/20 shadow-red-500/10' :
-            'border-gray-200 shadow-gray-200/10'
+      className={`relative w-full py-10 px-8 rounded-[2.5rem] bg-white border border-gray-100 shadow-2xl transition-all duration-500 overflow-hidden ${isApproved ? 'shadow-emerald-500/5' :
+        isDenied ? 'shadow-red-500/5' :
+          'shadow-gray-200/10'
         }`}
     >
+      {/* Background Decorative Element */}
+      <div className={`absolute top-0 right-0 w-64 h-64 blur-[100px] opacity-10 rounded-full -mr-20 -mt-20 ${isApproved ? 'bg-emerald-500' : isDenied ? 'bg-red-500' : 'bg-blue-500'
+        }`}></div>
+
       {/* Tech Status */}
-      <div className="absolute top-6 right-8 flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-          Secured by {modelName}
+      <div className="absolute top-6 right-8 flex items-center gap-2 z-10">
+        <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isApproved ? 'bg-emerald-500' : isDenied ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+        <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">
+          Nexus Protocol {modelName}
         </span>
       </div>
 
-      <div className="max-w-4xl mx-auto text-center">
-        {/* MASSIVE BADGE */}
-        <div className="mb-10 inline-block relative group">
-          <div className="absolute -inset-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-[3rem] opacity-20 blur-2xl transition-all duration-1000 group-hover:opacity-30"></div>
+      <div className="max-w-4xl mx-auto text-center relative z-10">
+        {/* SLEEK BADGE */}
+        <div className="mb-8 inline-block relative group">
+          <div className={`absolute -inset-1 bg-gradient-to-r rounded-[1.5rem] blur-xl opacity-20 transition-all duration-1000 group-hover:opacity-40 ${isApproved ? 'from-emerald-400 to-teal-500' :
+              isDenied ? 'from-red-500 to-rose-700' :
+                'from-blue-400 to-indigo-500'
+            }`}></div>
           <div
-            className={`relative px-20 py-10 rounded-[2.5rem] border shadow-sm transform transition-transform duration-500 hover:scale-105 ${isApproved ? 'bg-emerald-500 text-white border-emerald-400' :
-                isDenied ? 'bg-red-600 text-white border-red-500' :
-                  'bg-white text-gray-900 border-gray-100'
+            className={`relative px-12 py-6 rounded-[1.5rem] border shadow-lg transform transition-all duration-500 hover:scale-[1.02] ${isApproved ? 'bg-white text-emerald-600 border-emerald-100' :
+              isDenied ? 'bg-white text-red-600 border-red-100' :
+                'bg-white text-gray-900 border-gray-100'
               }`}
           >
-            <span className="text-sm font-black uppercase tracking-[0.4em] block mb-2 opacity-80">Verdict</span>
-            <div className="text-6xl md:text-8xl font-black tracking-tighter">
+            <span className={`text-[9px] font-black uppercase tracking-[0.5em] block mb-2 opacity-60 ${isApproved ? 'text-emerald-500' : isDenied ? 'text-red-500' : 'text-gray-400'}`}>System Verdict</span>
+            <div className="text-4xl md:text-5xl font-black tracking-tight leading-none">
               {isApproved ? 'APPROVED' : isDenied ? 'BLOCKED' : 'PENDING'}
             </div>
           </div>
         </div>
 
         {/* Confidence Stats */}
-        <div className="flex flex-col items-center gap-1 mb-10">
+        <div className="flex flex-col items-center gap-1 mb-8">
           <div className="flex items-center gap-3">
-            <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Confidence Index</span>
-            <span className={`text-4xl font-black ${isApproved ? 'text-emerald-500' : isDenied ? 'text-red-500' : 'text-gray-900'}`}>{confidencePercent}%</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Confidence Index</span>
+            <span className={`text-4xl font-black tracking-tighter ${isApproved ? 'text-emerald-500' : isDenied ? 'text-red-500' : 'text-gray-900'}`}>{confidencePercent}%</span>
           </div>
         </div>
 
         {/* Reasoning Section */}
-        <div className="bg-neutral-50/50 rounded-[2rem] p-8 border border-neutral-100 mb-10">
-          <p className="text-lg text-gray-700 font-medium italic leading-relaxed max-w-2xl mx-auto">
+        <div className="bg-neutral-50/50 rounded-[1.5rem] p-8 border border-neutral-100/50 mb-10 max-w-3xl mx-auto">
+          <p className="text-gray-600 font-medium leading-relaxed italic">
             "{finalReasoning}"
           </p>
         </div>
 
-        {/* Global Evidence Stats */}
+        {/* Evidence Metadata Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Agents Participated</p>
-            <p className="text-3xl font-black text-gray-900">{agentDecisionsCount || 0}</p>
+          <div className="bg-white/50 backdrop-blur-sm p-5 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-gray-200/20">
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Agent Quorum</p>
+            <p className="text-2xl font-black text-gray-900">{agentDecisionsCount || 0} Votes</p>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-2 opacity-10">🛡️</div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Internal Signals</p>
-            <p className="text-3xl font-black text-gray-900">{signalsCount || 0}</p>
-            {totalCost !== undefined && (
-              <p className="text-[10px] font-bold text-blue-500 mt-2 uppercase tracking-tight">${totalCost.toFixed(2)} Protocol Fee</p>
-            )}
+          <div className="bg-white/50 backdrop-blur-sm p-5 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-gray-200/20">
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Network Signals</p>
+            <div className="flex flex-col items-center">
+              <p className="text-2xl font-black text-gray-900">{signalsCount || 0} Datapoints</p>
+              {totalCost !== undefined && (
+                <p className="text-[9px] font-black text-blue-600 mt-1 uppercase tracking-tight">${totalCost.toFixed(3)} Cost</p>
+              )}
+            </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Risk Flags</p>
-            <p className={`text-3xl font-black ${riskFactorsCount === 0 ? 'text-emerald-500' : 'text-red-500'}`}>{riskFactorsCount || 0}</p>
+          <div className="bg-white/50 backdrop-blur-sm p-5 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-gray-200/20">
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Anomalies Detected</p>
+            <p className={`text-2xl font-black ${riskFactorsCount === 0 ? 'text-emerald-500' : 'text-red-500'}`}>{riskFactorsCount || 0} Flags</p>
           </div>
         </div>
       </div>

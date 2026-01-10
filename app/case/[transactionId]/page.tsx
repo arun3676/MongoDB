@@ -272,13 +272,7 @@ export default function CaseDetailPage() {
           spentSoFar={caseData.budget?.spentSoFar}
         />
 
-        {/* Unified vertical layout */}
         <div className="space-y-6">
-          {/* Main sequence: Timeline -> Terminal -> Debate -> Signals -> Decisions */}
-          <AgentTimeline timeline={caseData.timeline} payments={caseData.payments} />
-
-          <LiveTerminal transactionId={transactionId} />
-
           {/* Debate visualization - Prosecution & Defense */}
           <DebateView timeline={caseData.timeline} />
 
@@ -308,9 +302,15 @@ export default function CaseDetailPage() {
               ))}
             </div>
           )}
+
+          {/* SYSTEM LOGS (Penultimate Bottom) */}
+          <LiveTerminal transactionId={transactionId} />
+
+          {/* AGENT PULSE (Below System Logs) */}
+          <AgentTimeline timeline={caseData.timeline} payments={caseData.payments} />
         </div>
 
-        {/* Audit Download (only when status = COMPLETED) */}
+        {/* Audit Download (FINAL BOTTOM) */}
         {caseData.status === 'COMPLETED' && <AuditDownload transactionId={transactionId} />}
 
         {/* Polling Indicator */}

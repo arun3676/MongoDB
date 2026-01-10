@@ -14,6 +14,11 @@ const navItems = [
     icon: Home,
   },
   {
+    label: 'Audit Ledger',
+    href: '/cases',
+    icon: FileText,
+  },
+  {
     label: 'Nexus Market',
     href: '/marketplace',
     icon: ShoppingCart,
