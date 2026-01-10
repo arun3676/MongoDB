@@ -22,6 +22,7 @@ interface Signal {
   purchasedAt: Date | string;
   purchasedBy: string;
   expiresAt: Date | string;
+  paymentProof?: string;
 }
 
 interface SignalCardProps {
@@ -30,6 +31,7 @@ interface SignalCardProps {
 
 export default function SignalCard({ signal }: SignalCardProps) {
   const [showFullData, setShowFullData] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   const formatTimestamp = (ts: Date | string) => {
     const d = typeof ts === 'string' ? new Date(ts) : ts;
@@ -108,7 +110,74 @@ export default function SignalCard({ signal }: SignalCardProps) {
   const topFlags: string[] = getTopFlags();
 
   return (
-    <div className={`rounded-lg shadow-md border ${config.borderColor} ${config.bgColor} p-5`}>
+    <div className={`rounded-lg shadow-md border ${config.borderColor} ${config.bgColor} p-5 relative`}>
+      {/* MongoDB Receipt Icon */}
+      <button
+        onClick={() => setShowReceipt(!showReceipt)}
+        className="absolute top-3 right-3 p-2 rounded-md hover:bg-[#00FFC2]/10 transition-all duration-200 group"
+        title="View MongoDB Receipt"
+        aria-label="View MongoDB Receipt"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 text-gray-400 group-hover:text-[#00FFC2] transition-colors"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+      </button>
+
+      {/* Receipt Modal */}
+      {showReceipt && (
+        <div className="absolute top-14 right-3 z-10 bg-[#121214] border border-[#00FFC2] rounded-lg shadow-2xl p-4 min-w-[280px]">
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#3B3B3D]">
+            <h4 className="text-sm font-semibold text-[#00FFC2] font-mono">MongoDB Receipt</h4>
+            <button
+              onClick={() => setShowReceipt(false)}
+              className="text-gray-400 hover:text-white text-lg leading-none"
+              aria-label="Close receipt"
+            >
+              ×
+            </button>
+          </div>
+          <div className="space-y-2 text-xs font-mono">
+            <div>
+              <span className="text-gray-400">Signal ID:</span>
+              <p className="text-white break-all">{signal.signalId}</p>
+            </div>
+            <div>
+              <span className="text-gray-400">Purchase Time:</span>
+              <p className="text-white">{formatTimestamp(signal.purchasedAt)}</p>
+            </div>
+            <div>
+              <span className="text-gray-400">Cost:</span>
+              <p className="text-[#00FFC2]">{formatCost(signal.cost)}</p>
+            </div>
+            {signal.paymentProof && (
+              <div>
+                <span className="text-gray-400">Payment Proof:</span>
+                <p className="text-white break-all text-[10px]">{signal.paymentProof}</p>
+              </div>
+            )}
+            <div className="pt-2 border-t border-[#3B3B3D]">
+              <span className="text-gray-400 flex items-center gap-1">
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                Stored in MongoDB Atlas
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -120,7 +189,7 @@ export default function SignalCard({ signal }: SignalCardProps) {
             <p className="text-xs text-gray-500">ID: {signal.signalId.substring(0, 12)}...</p>
           </div>
         </div>
-        <span className={`px-2 py-1 rounded text-xs font-medium ${config.badgeColor}`}>
+        <span className={`px-2 py-1 rounded text-xs font-medium ${config.badgeColor} mr-8`}>
           {formatCost(signal.cost)}
         </span>
       </div>

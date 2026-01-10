@@ -10,6 +10,8 @@ import SignalCard from '../../components/SignalCard';
 import DecisionCard from '../../components/DecisionCard';
 import FinalDecision from '../../components/FinalDecision';
 import AuditDownload from '../../components/AuditDownload';
+import LiveTerminal from '../../components/LiveTerminal';
+import DebateView from '../../components/DebateView';
 
 // TypeScript Types
 interface Transaction {
@@ -45,6 +47,21 @@ interface Signal {
   expiresAt: Date | string;
 }
 
+interface PaymentEntry {
+  paymentId: string;
+  transactionId: string;
+  amount: number;
+  currency: string;
+  signalType: string;
+  status: string;
+  provider?: string;
+  agentName?: string;
+  createdAt?: Date | string;
+  completedAt?: Date | string;
+  cdpDetails?: Record<string, unknown>;
+  x402Details?: Record<string, unknown>;
+}
+
 interface Decision {
   decisionId: string;
   transactionId: string;
@@ -78,6 +95,12 @@ interface CaseData {
     totalCost: number;
     riskFactorsCount: number;
   };
+  payments: PaymentEntry[];
+  budget?: {
+    spentSoFar: number;
+    startingBudget: number;
+    remainingBudget: number;
+  } | null;
 }
 
 export default function CaseDetailPage() {
@@ -180,25 +203,62 @@ export default function CaseDetailPage() {
     );
   }
 
+  // Extract arbiter verdict from timeline for the unified verdict header
+  const arbiterStep = caseData.timeline
+    .slice()
+    .reverse()
+    .find((step) => step.agentName === 'Arbiter Agent' && step.action === 'ARBITER_VERDICT');
+
+  const arbiterVerdict = arbiterStep
+    ? {
+        output: arbiterStep.output as { reasoning?: string; decision?: string; confidence?: number },
+        metadata: arbiterStep.metadata as { model?: string },
+      }
+    : undefined;
+
   // Success State - Render full case detail
   return (
     <main className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
+        {/* FIRST: Verdict Banner (only if completed) */}
+        {caseData.status === 'COMPLETED' && caseData.finalDecision && (
+          <div className="mb-8">
+            <FinalDecision
+              decision={caseData.finalDecision.decision}
+              confidence={caseData.finalDecision.confidence}
+              reasoning={caseData.finalDecision.reasoning}
+              agentDecisionsCount={caseData.finalDecision.agentDecisionsCount}
+              signalsCount={caseData.finalDecision.signalsCount}
+              totalCost={caseData.finalDecision.totalCost}
+              riskFactorsCount={caseData.finalDecision.riskFactorsCount}
+              transactionId={transactionId}
+              arbiterVerdict={arbiterVerdict}
+            />
+          </div>
+        )}
+
+        {/* SECOND: Case Header */}
         <CaseHeader transaction={caseData.transaction} status={caseData.status} />
 
         {/* Cost Tracker */}
-        <CostTracker totalCost={caseData.totalCost} signals={caseData.signals} />
+        <CostTracker
+          totalCost={caseData.totalCost}
+          signals={caseData.signals}
+          spentSoFar={caseData.budget?.spentSoFar}
+        />
 
         {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column (2/3 width) - Timeline */}
-          <div className="lg:col-span-2">
-            <AgentTimeline timeline={caseData.timeline} />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Left column (2/3 width) - Timeline + Live Terminal */}
+          <div className="space-y-6 lg:col-span-2">
+            <AgentTimeline timeline={caseData.timeline} payments={caseData.payments} />
+            <LiveTerminal transactionId={transactionId} />
           </div>
 
-          {/* Right column (1/3 width) - Signals & Decisions */}
+          {/* Right column (1/3 width) - Debate + Signals & Decisions */}
           <div className="space-y-6">
+            <DebateView timeline={caseData.timeline} />
+
             {/* Signals */}
             {caseData.signals.map((signal) => (
               <SignalCard key={signal.signalId} signal={signal} />
@@ -208,20 +268,6 @@ export default function CaseDetailPage() {
             {caseData.decisions.map((decision) => (
               <DecisionCard key={decision.decisionId} decision={decision} />
             ))}
-
-            {/* Final Decision (only when status = COMPLETED) */}
-            {caseData.status === 'COMPLETED' && caseData.finalDecision && (
-              <FinalDecision
-                decision={caseData.finalDecision.decision}
-                confidence={caseData.finalDecision.confidence}
-                reasoning={caseData.finalDecision.reasoning}
-                agentDecisionsCount={caseData.finalDecision.agentDecisionsCount}
-                signalsCount={caseData.finalDecision.signalsCount}
-                totalCost={caseData.finalDecision.totalCost}
-                riskFactorsCount={caseData.finalDecision.riskFactorsCount}
-                transactionId={transactionId}
-              />
-            )}
           </div>
         </div>
 

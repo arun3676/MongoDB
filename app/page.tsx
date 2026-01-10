@@ -1,9 +1,15 @@
+import GlobalStats from './components/GlobalStats';
 import SubmitForm from './components/SubmitForm';
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-8">
       <div className="max-w-4xl mx-auto">
+        {/* Mission Control Dashboard */}
+        <div className="mb-10">
+          <GlobalStats />
+        </div>
+
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold mb-4 text-gray-900">

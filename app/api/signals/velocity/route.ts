@@ -27,6 +27,8 @@ import {
   saveSignal,
   updatePaymentWithRetry,
 } from '@/lib/x402';
+import { callLLM } from '@/lib/fireworks';
+import { getDatabase, COLLECTIONS } from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
@@ -107,6 +109,53 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Check for negotiation parameters
+    const proposedPriceParam = searchParams.get('proposedPrice');
+    const negotiationPitch = searchParams.get('negotiationPitch');
+
+    let actualCost: number = SIGNAL_PRICES.velocity;
+    let negotiationOutcome: any = null;
+
+    // Evaluate negotiation if pitch provided
+    if (negotiationPitch && proposedPriceParam) {
+      const proposedPrice = parseFloat(proposedPriceParam);
+
+      negotiationOutcome = await evaluateNegotiation(
+        'velocity',
+        SIGNAL_PRICES.velocity,
+        proposedPrice,
+        negotiationPitch,
+        transactionId
+      );
+
+      if (negotiationOutcome.accepted) {
+        actualCost = proposedPrice;
+        console.log(`[Velocity] Negotiation ACCEPTED: $${proposedPrice.toFixed(2)} (${((1 - proposedPrice / SIGNAL_PRICES.velocity) * 100).toFixed(0)}% discount)`);
+      } else {
+        actualCost = SIGNAL_PRICES.velocity;
+        console.log(`[Velocity] Negotiation REJECTED: Charging full price $${SIGNAL_PRICES.velocity.toFixed(2)}`);
+      }
+
+      // Log negotiation outcome to MongoDB payments collection
+      try {
+        const db = await getDatabase();
+        await db.collection(COLLECTIONS.PAYMENTS).updateOne(
+          { paymentProof: paymentProof },
+          {
+            $set: {
+              negotiationOutcome: {
+                ...negotiationOutcome,
+                evaluatedAt: new Date(),
+              },
+              actualCost,
+            },
+          }
+        );
+      } catch (error) {
+        console.error('[Velocity] Failed to log negotiation outcome:', error);
+      }
+    }
+
     // PAYMENT VERIFIED! Generate and return the signal data
     const signalData = generateVelocitySignal(userId, transactionId);
 
@@ -115,6 +164,8 @@ export async function GET(request: NextRequest) {
       ...signalData,
       paymentId: verification.paymentId,
       purchasedBy: request.headers.get('X-Agent-Name') || 'Unknown',
+      actualCost,
+      negotiationOutcome,
     };
 
     // Save to MongoDB so other agents can read it later for free
@@ -151,6 +202,101 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Evaluate a negotiation pitch using LLM
+ */
+async function evaluateNegotiation(
+  signalType: string,
+  fullPrice: number,
+  proposedPrice: number,
+  pitch: string,
+  transactionId: string
+): Promise<{
+  accepted: boolean;
+  reasoning: string;
+  discount: number;
+  discountPercentage: number;
+}> {
+  try {
+    const discount = fullPrice - proposedPrice;
+    const discountPercentage = (discount / fullPrice) * 100;
+
+    // Check if price is within acceptable range (20-40% discount)
+    const minAcceptablePrice = fullPrice * 0.60; // 40% discount max
+    const maxAcceptablePrice = fullPrice * 0.80; // 20% discount min
+
+    if (proposedPrice < minAcceptablePrice) {
+      // Discount too steep - auto-reject
+      return {
+        accepted: false,
+        reasoning: `Proposed price $${proposedPrice.toFixed(2)} is below minimum acceptable threshold ($${minAcceptablePrice.toFixed(2)}). Discount of ${discountPercentage.toFixed(0)}% exceeds maximum 40% allowed.`,
+        discount,
+        discountPercentage,
+      };
+    }
+
+    if (proposedPrice > maxAcceptablePrice) {
+      // Discount too small - auto-reject (not worth negotiating)
+      return {
+        accepted: false,
+        reasoning: `Proposed price $${proposedPrice.toFixed(2)} is above threshold for negotiation ($${maxAcceptablePrice.toFixed(2)}). Please pay full price or negotiate a deeper discount (20-40% range).`,
+        discount,
+        discountPercentage,
+      };
+    }
+
+    // Price is within range - use LLM to evaluate the pitch quality
+    const systemPrompt = `You are an economic evaluator for a fraud detection signal marketplace. Your job is to evaluate negotiation pitches from AI agents requesting discounted pricing for signals.
+
+You must determine if the agent's reasoning is logical, specific, and economically sound. Accept pitches that demonstrate clear economic constraints and quantitative reasoning. Reject vague, generic, or illogical pitches.`;
+
+    const userPrompt = `Evaluate this negotiation pitch for purchasing a ${signalType} fraud detection signal.
+
+PRICING DETAILS:
+- Full Price: $${fullPrice.toFixed(2)}
+- Proposed Price: $${proposedPrice.toFixed(2)}
+- Discount: ${discountPercentage.toFixed(1)}% (within acceptable 20-40% range)
+
+AGENT'S NEGOTIATION PITCH:
+"${pitch}"
+
+EVALUATION CRITERIA:
+1. Is the pitch specific and quantitative (mentions actual dollar amounts, percentages, transaction size)?
+2. Does the pitch demonstrate genuine economic constraints (low transaction value, margin pressure)?
+3. Is the reasoning logical and well-structured?
+4. Does the agent explain mutual benefit (signal still provides value at lower price)?
+
+Return JSON in this format:
+{
+  "accepted": true/false,
+  "reasoning": "Your 1-2 sentence explanation for accept/reject decision"
+}
+
+IMPORTANT: Be generous with well-reasoned pitches that show economic thinking. Be strict with generic or vague requests.`;
+
+    const response = await callLLM<{
+      accepted: boolean;
+      reasoning: string;
+    }>(systemPrompt, userPrompt, { type: 'json_object' });
+
+    return {
+      accepted: response.accepted,
+      reasoning: response.reasoning,
+      discount,
+      discountPercentage,
+    };
+  } catch (error) {
+    console.error('[Negotiation Evaluation] LLM failed:', error);
+    // Fallback: reject on error
+    return {
+      accepted: false,
+      reasoning: 'Negotiation evaluation failed due to system error. Please pay full price.',
+      discount: fullPrice - proposedPrice,
+      discountPercentage: ((fullPrice - proposedPrice) / fullPrice) * 100,
+    };
   }
 }
 

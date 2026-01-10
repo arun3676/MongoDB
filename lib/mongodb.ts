@@ -34,29 +34,34 @@ interface GlobalWithMongo {
 
 const globalWithMongo = global as GlobalWithMongo;
 
-let clientPromise: Promise<MongoClient>;
-
-if (process.env.NODE_ENV === 'development') {
-  // In development, use a global variable to preserve the connection
-  // across hot reloads
-  if (!globalWithMongo._mongoClientPromise) {
-    const client = new MongoClient(MONGODB_URI, options);
-    globalWithMongo._mongoClientPromise = client.connect();
-  }
-  clientPromise = globalWithMongo._mongoClientPromise;
-} else {
-  // In production, create a new connection
-  const client = new MongoClient(MONGODB_URI, options);
-  clientPromise = client.connect();
-}
+let clientPromise: Promise<MongoClient> | undefined;
 
 /**
- * Get connected MongoDB client
+ * Get connected MongoDB client (lazy connection - only connects when called)
+ *
+ * This function is idempotent - safe to call multiple times.
+ * Connection is cached after first call.
  *
  * @returns Promise<MongoClient> - Connected MongoDB client
  */
 export async function getClient(): Promise<MongoClient> {
-  return clientPromise;
+  // Lazy initialization: only create connection when actually needed
+  if (process.env.NODE_ENV === 'development') {
+    // In development, use a global variable to preserve the connection
+    // across hot reloads
+    if (!globalWithMongo._mongoClientPromise) {
+      const client = new MongoClient(MONGODB_URI, options);
+      globalWithMongo._mongoClientPromise = client.connect();
+    }
+    return globalWithMongo._mongoClientPromise;
+  } else {
+    // In production, cache the connection promise (lazy initialization)
+    if (!clientPromise) {
+      const client = new MongoClient(MONGODB_URI, options);
+      clientPromise = client.connect();
+    }
+    return clientPromise;
+  }
 }
 
 /**

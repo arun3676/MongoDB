@@ -28,11 +28,11 @@ import { runDebateAgent } from './debate-agent';
  * Run Buyer/Decision Agent on a transaction
  *
  * @param transactionId - Transaction ID
- * @param purchaseList - List of signal types to purchase (e.g., ['velocity', 'network'])
+ * @param purchaseList - List of signals to purchase with optional negotiation data
  */
 export async function runBuyerDecisionAgent(
   transactionId: string,
-  purchaseList: string[] = []
+  purchaseList: Array<string | { signalType: string; proposedPrice?: number; negotiationPitch?: string }> = []
 ) {
   const db = await getDatabase();
   const startTime = Date.now();
@@ -49,26 +49,43 @@ export async function runBuyerDecisionAgent(
       throw new Error('Transaction not found');
     }
 
-    // Step 2: Purchase signals via x402 + CDP wallet
+    // Step 2: Purchase signals via x402 + CDP wallet (with negotiation support)
     const purchasedSignals = [];
     let totalSpent = 0;
 
-    for (const signalType of purchaseList) {
+    for (const item of purchaseList) {
       try {
-        console.log(`   Purchasing ${signalType} signal via CDP...`);
+        // Handle both old format (string) and new format (object with negotiation)
+        const signalType = typeof item === 'string' ? item : item.signalType;
+        const proposedPrice = typeof item === 'object' ? item.proposedPrice : undefined;
+        const negotiationPitch = typeof item === 'object' ? item.negotiationPitch : undefined;
+
+        if (negotiationPitch) {
+          console.log(`   Purchasing ${signalType} signal with negotiation...`);
+          console.log(`   Proposed price: $${proposedPrice?.toFixed(2)}`);
+        } else {
+          console.log(`   Purchasing ${signalType} signal via CDP...`);
+        }
 
         const signal = await purchaseSignalWithCDP(
           transactionId,
           transaction.userId,
-          signalType
+          signalType,
+          proposedPrice,
+          negotiationPitch
         );
 
         if (signal) {
           purchasedSignals.push(signal);
-          const signalCost = signalType === 'velocity' ? 0.10 : 0.25;
+          // Use actual paid amount from signal response
+          const signalCost = signal.actualCost || signal.cost || (signalType === 'velocity' ? 0.10 : 0.25);
           totalSpent += signalCost;
 
-          console.log(`   ✅ Purchased ${signalType} for $${signalCost.toFixed(2)}`);
+          if (negotiationPitch && signal.negotiationOutcome) {
+            console.log(`   ✅ Negotiation ${signal.negotiationOutcome.accepted ? 'ACCEPTED' : 'REJECTED'} - Paid $${signalCost.toFixed(2)}`);
+          } else {
+            console.log(`   ✅ Purchased ${signalType} for $${signalCost.toFixed(2)}`);
+          }
 
           // Update budget
           if (budget) {
@@ -88,7 +105,7 @@ export async function runBuyerDecisionAgent(
           }
         }
       } catch (error) {
-        console.error(`   ❌ Failed to purchase ${signalType}:`, error);
+        console.error(`   ❌ Failed to purchase signal:`, error);
         // Continue with other signals even if one fails
       }
     }
@@ -213,25 +230,35 @@ export async function runBuyerDecisionAgent(
 }
 
 /**
- * Purchase a signal via x402 + CDP wallet
+ * Purchase a signal via x402 + CDP wallet (with negotiation support)
  */
 async function purchaseSignalWithCDP(
   transactionId: string,
   userId: string,
-  signalType: string
+  signalType: string,
+  proposedPrice?: number,
+  negotiationPitch?: string
 ): Promise<any> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3001';
-  const signalCost = signalType === 'velocity' ? 0.10 : 0.25;
+  const fullPrice = signalType === 'velocity' ? 0.10 : 0.25;
+  const paymentAmount = proposedPrice || fullPrice;
 
   // Step 1: Make CDP payment
   const paymentResponse = await fetch(`${baseUrl}/api/payments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      amount: signalCost,
+      amount: paymentAmount,
       signalType,
       transactionId,
       agentName: 'Buyer/Decision Agent',
+      // Include negotiation data in payment record
+      negotiation: negotiationPitch ? {
+        fullPrice,
+        proposedPrice: paymentAmount,
+        pitch: negotiationPitch,
+        timestamp: new Date().toISOString(),
+      } : undefined,
     }),
   });
 
@@ -245,16 +272,25 @@ async function purchaseSignalWithCDP(
 
   console.log(`     Payment successful: ${paymentData.cdpTxHash?.substring(0, 10)}...`);
 
-  // Step 2: Get signal with payment proof
-  const signalResponse = await fetch(
-    `${baseUrl}/api/signals/${signalType}?userId=${userId}&transactionId=${transactionId}`,
-    {
-      headers: {
-        'X-Payment-Proof': paymentProof,
-        'X-Agent-Name': 'Buyer/Decision Agent',
-      },
-    }
-  );
+  // Step 2: Get signal with payment proof (and negotiation data if applicable)
+  const signalUrl = new URL(`${baseUrl}/api/signals/${signalType}`);
+  signalUrl.searchParams.set('userId', userId);
+  signalUrl.searchParams.set('transactionId', transactionId);
+
+  // Pass negotiation parameters in query string
+  if (proposedPrice) {
+    signalUrl.searchParams.set('proposedPrice', proposedPrice.toString());
+  }
+  if (negotiationPitch) {
+    signalUrl.searchParams.set('negotiationPitch', negotiationPitch);
+  }
+
+  const signalResponse = await fetch(signalUrl.toString(), {
+    headers: {
+      'X-Payment-Proof': paymentProof,
+      'X-Agent-Name': 'Buyer/Decision Agent',
+    },
+  });
 
   if (!signalResponse.ok) {
     throw new Error(`Signal fetch failed: ${signalResponse.statusText}`);

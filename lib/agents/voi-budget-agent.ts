@@ -32,6 +32,7 @@
 
 import { getDatabase, COLLECTIONS } from '../mongodb';
 import { runBuyerDecisionAgent } from './buyer-decision-agent';
+import { callLLM } from '../fireworks';
 
 /**
  * Run VOI/Budget Agent on a transaction
@@ -108,16 +109,35 @@ export async function runVOIAgent(transactionId: string) {
       },
     });
 
-    // Step 4: Calculate VOI for each tool
+    // Step 4: Calculate VOI for each tool (with negotiation support)
     const voiDecisions = [];
-    const purchaseList: string[] = [];
+    const purchaseList: Array<{ signalType: string; proposedPrice?: number; negotiationPitch?: string }> = [];
 
     for (const tool of tools) {
       const voi = calculateVOI(transaction, tool, suspicionScore);
 
-      const decision = voi.voi > 0 ? 'BUY' : 'SKIP';
+      let decision = voi.voi > 0 ? 'BUY' : 'SKIP';
+      let proposedPrice: number | undefined;
+      let negotiationPitch: string | undefined;
 
-      console.log(`   ${tool.name}: VOI=$${voi.voi.toFixed(2)} → ${decision}`);
+      // If VOI is negative, try to negotiate a lower price
+      if (voi.voi < 0) {
+        console.log(`   ${tool.name}: VOI=$${voi.voi.toFixed(2)} → Attempting negotiation...`);
+
+        const negotiation = await generateNegotiation(transaction, tool, voi, suspicionScore);
+
+        if (negotiation.shouldNegotiate) {
+          decision = 'NEGOTIATE';
+          proposedPrice = negotiation.proposedPrice;
+          negotiationPitch = negotiation.pitch;
+
+          console.log(`   ${tool.name}: Proposing $${proposedPrice?.toFixed(2)} (${((1 - proposedPrice! / tool.price) * 100).toFixed(0)}% discount)`);
+        } else {
+          console.log(`   ${tool.name}: VOI=$${voi.voi.toFixed(2)} → ${decision}`);
+        }
+      } else {
+        console.log(`   ${tool.name}: VOI=$${voi.voi.toFixed(2)} → ${decision}`);
+      }
 
       voiDecisions.push({
         timestamp: new Date(),
@@ -129,13 +149,22 @@ export async function runVOIAgent(transactionId: string) {
         voi: voi.voi,
         decision,
         reasoning: voi.reasoning,
+        negotiation: decision === 'NEGOTIATE' ? {
+          proposedPrice,
+          discount: tool.price - (proposedPrice || tool.price),
+          pitch: negotiationPitch,
+        } : undefined,
       });
 
-      if (decision === 'BUY') {
+      if (decision === 'BUY' || decision === 'NEGOTIATE') {
         // Extract signal type from endpoint (e.g., /api/signals/velocity → velocity)
         const signalType = tool.endpoint.split('/').pop();
         if (signalType) {
-          purchaseList.push(signalType);
+          purchaseList.push({
+            signalType,
+            proposedPrice: decision === 'NEGOTIATE' ? proposedPrice : undefined,
+            negotiationPitch: decision === 'NEGOTIATE' ? negotiationPitch : undefined,
+          });
         }
       }
     }
@@ -281,6 +310,92 @@ function calculateVOI(
     voi,
     reasoning,
   };
+}
+
+/**
+ * Generate a negotiation pitch for a signal purchase
+ *
+ * Uses LLM to create a reasoned argument for why the agent can't pay full price
+ */
+async function generateNegotiation(
+  transaction: any,
+  tool: any,
+  voi: { voi: number; expectedLoss: number; confidenceGain: number },
+  suspicionScore: number
+): Promise<{
+  shouldNegotiate: boolean;
+  proposedPrice?: number;
+  pitch?: string;
+}> {
+  try {
+    // Calculate a proposed price (20-40% discount based on how negative the VOI is)
+    const fullPrice = tool.price;
+    const voiDeficit = Math.abs(voi.voi);
+
+    // More negative VOI = bigger discount needed
+    // Map VOI deficit to discount percentage (20-40%)
+    let discountPercentage = 0.20; // Start at 20%
+    if (voiDeficit > fullPrice * 0.5) {
+      discountPercentage = 0.40; // Max 40% discount
+    } else {
+      discountPercentage = 0.20 + (voiDeficit / fullPrice) * 0.20; // Scale between 20-40%
+    }
+
+    const proposedPrice = Math.max(
+      fullPrice * (1 - discountPercentage),
+      0.01 // Minimum $0.01
+    );
+
+    // Use LLM to generate a reasoned negotiation pitch
+    const systemPrompt = `You are an economic negotiator for a fraud detection AI agent. Your job is to generate persuasive, logical arguments for why a fraud signal should be purchased at a discounted price.
+
+You must be SPECIFIC and QUANTITATIVE in your reasoning. Explain the economic constraints and value proposition clearly.`;
+
+    const userPrompt = `Generate a negotiation pitch for purchasing a fraud detection signal at a discounted price.
+
+TRANSACTION DETAILS:
+- Transaction Amount: $${transaction.amount.toFixed(2)}
+- Suspicion Score: ${(suspicionScore * 100).toFixed(0)}% (${suspicionScore < 0.5 ? 'LOW' : suspicionScore < 0.7 ? 'MEDIUM' : 'HIGH'} risk)
+- Expected Loss if Fraudulent: $${voi.expectedLoss.toFixed(2)}
+
+SIGNAL DETAILS:
+- Signal Name: ${tool.name}
+- Full Price: $${fullPrice.toFixed(2)}
+- Expected Confidence Gain: ${(voi.confidenceGain * 100).toFixed(0)}%
+- Value of Information (VOI): $${voi.voi.toFixed(2)} (NEGATIVE - not economically justified at full price)
+
+PROPOSED PRICE: $${proposedPrice.toFixed(2)} (${(discountPercentage * 100).toFixed(0)}% discount)
+
+Generate a concise negotiation pitch (2-3 sentences) explaining why:
+1. The full price doesn't make economic sense for this specific transaction
+2. The proposed discounted price is fair and mutually beneficial
+3. The signal still provides value at the lower price
+
+Return JSON in this format:
+{
+  "pitch": "Your 2-3 sentence negotiation pitch here",
+  "shouldNegotiate": true
+}
+
+Be SPECIFIC about the numbers. For example, mention that "this $${transaction.amount} transaction" or "a $${fullPrice} signal eats ${((fullPrice / transaction.amount) * 100).toFixed(0)}% of the transaction value."`;
+
+    const response = await callLLM<{
+      pitch: string;
+      shouldNegotiate: boolean;
+    }>(systemPrompt, userPrompt, { type: 'json_object' });
+
+    return {
+      shouldNegotiate: response.shouldNegotiate,
+      proposedPrice: response.shouldNegotiate ? proposedPrice : undefined,
+      pitch: response.pitch,
+    };
+  } catch (error) {
+    console.error('Negotiation generation failed:', error);
+    // Fallback: don't negotiate if LLM fails
+    return {
+      shouldNegotiate: false,
+    };
+  }
 }
 
 /**
