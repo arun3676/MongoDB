@@ -18,6 +18,11 @@
 
 import OpenAI from 'openai';
 
+// Validate FIREWORKS_API_KEY before initializing client
+if (!process.env.FIREWORKS_API_KEY) {
+  throw new Error('Missing FIREWORKS_API_KEY in environment variables');
+}
+
 // Initialize Fireworks client (uses OpenAI-compatible API)
 const fireworks = new OpenAI({
   apiKey: process.env.FIREWORKS_API_KEY,

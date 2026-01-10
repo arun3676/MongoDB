@@ -1,18 +1,22 @@
 /**
  * ORCHESTRATOR AGENT - The Traffic Controller
  *
- * ROLE: Entry point for all fraud cases
+ * ROLE: Entry point for all fraud cases + Semantic Intent Capture
  *
  * WHAT IT DOES:
  * 1. Receives a new transaction
- * 2. Creates a case in MongoDB (transactions collection)
- * 3. Logs "Case created" to timeline (agent_steps collection)
- * 4. Triggers the L1 Analyst to start analysis
- * 5. Returns the case ID
+ * 2. CAPTURES SEMANTIC INTENT via Voyage-3 embedding (NEW!)
+ *    - Generates 1024-dim vector representing transaction "meaning"
+ *    - Enables semantic case search: "Find similar fraud cases"
+ *    - Stores embedding in transactions.caseEmbedding field
+ * 3. Creates a case in MongoDB (transactions collection)
+ * 4. Logs "Case created" to timeline with semantic intent metadata
+ * 5. Triggers the Suspicion Agent to start analysis
+ * 6. Returns the case ID
  *
  * WHAT IT DOESN'T DO:
- * - Doesn't analyze the transaction (that's L1's job)
- * - Doesn't call the LLM (pure coordination)
+ * - Doesn't analyze the transaction (that's Suspicion Agent's job)
+ * - Doesn't call the LLM for fraud decisions (pure coordination)
  * - Doesn't make fraud decisions
  *
  * WHY THIS DESIGN?
@@ -20,14 +24,23 @@
  * - Clear separation: orchestration vs analysis
  * - Easy to modify the workflow without touching analysis logic
  * - Audit trail shows exactly when case was created
+ * - SEMANTIC EMBEDDING AT BIRTH: Captures pure intent before contamination
+ *
+ * WHY SEMANTIC EMBEDDING AT BIRTH?
+ * - Captures transaction "meaning" before any agent analysis
+ * - Enables case similarity search throughout pipeline
+ * - Agents can find "cases like this" for pattern learning
+ * - Deduplication: detect similar/duplicate transactions
+ * - Pure signal: no bias from agent decisions yet
  *
  * EXAMPLE FLOW:
  * 1. User submits transaction via UI
  * 2. POST /api/case/create calls orchestrator.createCase()
- * 3. Orchestrator creates case → triggers L1
- * 4. L1 starts analyzing → may trigger L2
- * 5. L2 finishes → triggers Final Reviewer
- * 6. Final Reviewer makes decision → case complete
+ * 3. Orchestrator generates semantic embedding (Voyage-3)
+ * 4. Orchestrator creates case → triggers Suspicion Agent
+ * 5. Suspicion Agent analyzes → triggers Policy Agent
+ * 6. Policy Agent decides → triggers VOI/Buyer agents
+ * 7. Final decision made → case complete
  */
 
 import { getDatabase, COLLECTIONS } from '../mongodb';
@@ -38,6 +51,7 @@ import { runSuspicionAgent } from './suspicion-agent';
 import { runPolicyAgent } from './policy-agent';
 import { runVOIAgent } from './voi-budget-agent';
 import { runBuyerDecisionAgent } from './buyer-decision-agent';
+import { getMatryoshkaEmbedding } from '../voyage';
 
 /**
  * Create a new fraud case and start the analysis pipeline
@@ -102,8 +116,67 @@ export async function createCase(transactionData: {
       };
     }
 
-    // Step 1: Create NEW case in MongoDB
-    const caseDocument = {
+    // =========================================================================
+    // STEP 1: CAPTURE SEMANTIC INTENT AT BIRTH
+    // =========================================================================
+    // Generate embedding from transaction data to capture "meaning"
+    // This enables semantic case search later:
+    // - "Find similar fraud cases"
+    // - "Cases like this high-velocity merchant transaction"
+    // - Agents can reference past cases with similar semantic meaning
+    //
+    // WHY AT BIRTH?
+    // - Captures intent before any analysis contamination
+    // - Pure transaction characteristics (amount, merchant, metadata)
+    // - Enables case deduplication via semantic similarity
+    // - Allows agents to find "cases like this" throughout pipeline
+    // =========================================================================
+
+    console.log(`🧠 [Orchestrator] Capturing semantic intent via Voyage-3...`);
+
+    let caseEmbedding: number[] | null = null;
+    let embeddingMetadata: any = null;
+
+    try {
+      // Combine transaction data into natural language description
+      const semanticText = `
+        Transaction of ${transactionData.amount} ${transactionData.currency}
+        from user ${transactionData.userId}
+        to merchant ${transactionData.merchantId}.
+        ${transactionData.metadata?.newAccount ? 'New account.' : 'Established account.'}
+        ${transactionData.metadata?.highRisk ? 'Flagged as high risk.' : ''}
+        ${transactionData.metadata?.accountAge ? `Account age: ${transactionData.metadata.accountAge} days.` : ''}
+        ${transactionData.metadata?.deviceId ? `Device: ${transactionData.metadata.deviceId}.` : ''}
+        ${transactionData.metadata?.location ? `Location: ${transactionData.metadata.location}.` : ''}
+      `.trim();
+
+      // Generate 1024-dim embedding (full precision for case matching)
+      // Using 1024-dim because:
+      // - Case similarity is critical for fraud pattern detection
+      // - Need maximum accuracy to match similar fraud cases
+      // - Transaction count is moderate (not millions)
+      const embedding = await getMatryoshkaEmbedding(semanticText, 1024);
+
+      if (embedding) {
+        caseEmbedding = embedding;
+        embeddingMetadata = {
+          model: 'voyage-3',
+          dimensions: 1024,
+          generatedAt: timestamp,
+          textEmbedded: semanticText,
+          capturedBy: 'Orchestrator',
+        };
+        console.log(`   ✅ Semantic intent captured: 1024-dim embedding`);
+      } else {
+        console.warn(`   ⚠️ Semantic embedding failed - continuing without embedding`);
+      }
+    } catch (error) {
+      console.error(`   ❌ Semantic embedding error:`, error);
+      // Continue without embedding - not critical for case creation
+    }
+
+    // Step 2: Create NEW case in MongoDB WITH SEMANTIC EMBEDDING
+    const caseDocument: any = {
       transactionId: transactionData.transactionId,
       amount: transactionData.amount,
       currency: transactionData.currency,
@@ -124,13 +197,18 @@ export async function createCase(transactionData: {
       // Agent tracking
       currentAgent: 'Orchestrator',
       agentHistory: ['Orchestrator'],
+
+      // SEMANTIC INTENT EMBEDDING (new!)
+      // Enables semantic case search and pattern matching
+      caseEmbedding: caseEmbedding,
+      embeddingMetadata: embeddingMetadata,
     };
 
     await db.collection(COLLECTIONS.TRANSACTIONS).insertOne(caseDocument);
 
-    console.log(`✅ [Orchestrator] Created case ${transactionData.transactionId}`);
+    console.log(`✅ [Orchestrator] Created case ${transactionData.transactionId}${caseEmbedding ? ' with semantic embedding' : ''}`);
 
-    // Step 2: Log this action to the timeline
+    // Step 3: Log this action to the timeline (with semantic intent info)
     const timelineStep = {
       transactionId: transactionData.transactionId,
       stepNumber: 1,
@@ -144,21 +222,34 @@ export async function createCase(transactionData: {
         transaction: transactionData,
       },
       output: {
-        message: 'Case created successfully',
+        message: caseEmbedding
+          ? 'Case created successfully with semantic intent captured via Voyage-3 for adaptive retrieval'
+          : 'Case created successfully (semantic embedding unavailable)',
         nextAgent: 'Suspicion Agent',
+        semanticIntentCaptured: !!caseEmbedding,
+        embeddingDimensions: caseEmbedding ? 1024 : null,
       },
 
       // Metadata
       metadata: {
         caseStatus: 'PROCESSING',
+        semanticEmbedding: caseEmbedding ? {
+          captured: true,
+          model: 'voyage-3',
+          dimensions: 1024,
+          usedFor: 'adaptive retrieval, case similarity, pattern matching',
+        } : {
+          captured: false,
+          reason: 'Voyage AI unavailable or failed',
+        },
       },
     };
 
     await db.collection(COLLECTIONS.AGENT_STEPS).insertOne(timelineStep);
 
-    console.log(`📝 [Orchestrator] Logged timeline step 1`);
+    console.log(`📝 [Orchestrator] Logged timeline step 1${caseEmbedding ? ' (semantic intent captured)' : ''}`);
 
-    // Step 3: Trigger Suspicion Agent (runs asynchronously)
+    // Step 4: Trigger Suspicion Agent (runs asynchronously)
     // We don't await this - let it run in the background
     // The UI will poll to see progress
     setImmediate(() => {
