@@ -9,6 +9,8 @@
  *   "currency": "USD",
  *   "userId": "user_12345",
  *   "merchantId": "merchant_abc",
+ *   "phone": "+15551234567",
+ *   "email": "user@example.com",
  *   "metadata": {
  *     "deviceId": "...",
  *     "ipAddress": "...",
@@ -41,7 +43,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Validate required fields
-    const { amount, currency = 'USD', userId, merchantId, metadata = {} } = body;
+    const { amount, currency = 'USD', userId, merchantId, metadata = {}, phone, email } = body;
 
     if (!amount || !userId || !merchantId) {
       return NextResponse.json(
@@ -73,13 +75,21 @@ export async function POST(request: NextRequest) {
     console.log(`\n📋 [API] Creating case ${transactionId} for $${amount} ${currency}`);
 
     // Create the case (triggers agent pipeline)
+    const enrichedMetadata = { ...metadata };
+    if (phone && !enrichedMetadata.phone) {
+      enrichedMetadata.phone = phone;
+    }
+    if (email && !enrichedMetadata.email) {
+      enrichedMetadata.email = email;
+    }
+
     const result = await runSuspicionAgent({
       transactionId,
       amount,
       currency,
       userId,
       merchantId,
-      metadata,
+      metadata: enrichedMetadata,
     });
 
     console.log(`✅ [API] Case created: ${transactionId}`);

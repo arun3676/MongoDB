@@ -397,9 +397,8 @@ async function recoverCase(transactionId: string): Promise<{
           console.error(`[Recovery] Buyer Agent failed:`, error);
         });
       };
-    } else if (agentHistory.includes('Buyer/Decision Agent') && !agentHistory.includes('Debate Tribunal')) {
-      // Buyer ran but debate might be incomplete
-      // Check if final decision exists
+    } else if (agentHistory.includes('Buyer/Decision Agent')) {
+      // Buyer ran; ensure final decision exists
       const hasFinalDecision = caseData.finalDecision !== null;
 
       if (!hasFinalDecision) {
@@ -416,7 +415,6 @@ async function recoverCase(transactionId: string): Promise<{
         };
       } else {
         // Already have final decision but status not updated
-        // Mark as completed
         await db.collection(COLLECTIONS.TRANSACTIONS).updateOne(
           { transactionId },
           { $set: { status: 'COMPLETED', updatedAt: new Date() } }

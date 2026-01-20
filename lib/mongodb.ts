@@ -140,4 +140,7 @@ export const COLLECTIONS = {
   POLICIES: 'policies',
   BUDGET: 'budget',
   TOOL_METADATA: 'tool_metadata',
+  VERIFICATION_SESSIONS: 'verification_sessions',
+  VERIFICATIONS: 'verifications',
+  MARKETPLACE_ORDERS: 'marketplace_orders',
 } as const;

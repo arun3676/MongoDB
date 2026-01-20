@@ -22,7 +22,19 @@
 
 import { getDatabase, COLLECTIONS } from '../mongodb';
 import { callLLM, formatTransactionForLLM, formatSignalForLLM } from '../fireworks';
-import { runDebateAgent } from './debate-agent';
+import { triggerCustomerNotification } from './customer-notification-agent';
+
+type VerificationContext = {
+  sessionId: string;
+  response: 'CONFIRMED' | 'DISPUTED';
+  identityVerified?: boolean;
+  channel?: 'sms' | 'email' | 'webhook' | 'web';
+  receivedAt?: Date | string;
+};
+
+type BuyerDecisionOptions = {
+  verificationContext?: VerificationContext;
+};
 
 /**
  * Run Buyer/Decision Agent on a transaction
@@ -32,7 +44,8 @@ import { runDebateAgent } from './debate-agent';
  */
 export async function runBuyerDecisionAgent(
   transactionId: string,
-  purchaseList: Array<string | { signalType: string; proposedPrice?: number; negotiationPitch?: string }> = []
+  purchaseList: Array<string | { signalType: string; proposedPrice?: number; negotiationPitch?: string }> = [],
+  options: BuyerDecisionOptions = {}
 ) {
   const db = await getDatabase();
   const startTime = Date.now();
@@ -127,24 +140,203 @@ export async function runBuyerDecisionAgent(
       .sort({ timestamp: 1 })
       .toArray();
 
-    // Step 5: Run adversarial debate tribunal
-    console.log(`   🎭 Initiating adversarial debate tribunal...`);
-
-    const debateResult = await runDebateAgent(
+    const suspicionStep = await db.collection(COLLECTIONS.AGENT_STEPS).findOne({
       transactionId,
-      allSignals,
-      decisions // Previous agent decisions
+      agentName: 'Suspicion Agent',
+    });
+    const suspicionScore =
+      typeof suspicionStep?.output?.suspicionScore === 'number'
+        ? suspicionStep.output.suspicionScore
+        : null;
+
+    const verificationContext = options.verificationContext;
+
+    // Step 5: Synthesize final decision with LLM using all evidence
+    console.log(`   🧠 Calling LLM for final decision synthesis...`);
+
+    const systemPrompt = `You are the Buyer/Decision Agent. Make the FINAL APPROVE or DENY decision for a fraud case.
+
+CONTEXT:
+- You have all purchased signals (velocity, network, others)
+- You have all prior agent decisions (L1/L2/Policy/VOI)
+- You may have a customer verification response (YES/NO) that should inform the final call
+- Minimize false negatives (do not let fraud through), but avoid unnecessary blocks when evidence is weak.
+
+OUTPUT (JSON):
+{
+  "decision": "APPROVE" | "DENY",
+  "confidence": number,          // 0.0 - 1.0
+  "reasoning": string,
+  "riskFactors": string[]        // key drivers for the decision
+}`;
+
+    const verificationSection = verificationContext
+      ? `CUSTOMER VERIFICATION:
+- Response: ${verificationContext.response}
+- Identity Verified: ${verificationContext.identityVerified ? 'true' : 'false'}
+- Channel: ${verificationContext.channel || 'unknown'}
+- Received At: ${verificationContext.receivedAt || 'unknown'}`
+      : 'CUSTOMER VERIFICATION: None';
+
+    const userPrompt = `TRANSACTION:
+${JSON.stringify(formatTransactionForLLM(transaction), null, 2)}
+
+SIGNALS:
+${JSON.stringify(allSignals.map(formatSignalForLLM), null, 2)}
+
+PRIOR DECISIONS:
+${JSON.stringify(decisions.map((d) => ({
+  agentName: d.agentName,
+  decision: d.decision,
+  confidence: d.confidence,
+  reasoning: d.reasoning,
+  riskFactors: d.riskFactors,
+})), null, 2)}
+
+${verificationSection}
+
+Make the final decision now.`;
+
+    const llmDecision = await callLLM<{
+      decision: 'APPROVE' | 'DENY';
+      confidence: number;
+      reasoning: string;
+      riskFactors?: string[];
+    }>(systemPrompt, userPrompt, { type: 'json_object' });
+
+    console.log(
+      `   ✅ Final decision: ${llmDecision.decision} (${Math.round((llmDecision.confidence || 0) * 100)}% confidence)`
     );
 
-    // Map debate result to the expected decision format
-    const llmDecision = {
-      decision: debateResult.arbiterVerdict.decision,
-      confidence: debateResult.arbiterVerdict.confidence,
-      reasoning: debateResult.arbiterVerdict.reasoning,
-      riskFactors: debateResult.prosecutionArgument.aggravatingFactors || [],
-    };
+    const mediumConfidence =
+      typeof llmDecision.confidence === 'number' &&
+      llmDecision.confidence >= 0.55 &&
+      llmDecision.confidence <= 0.8;
+    const mediumSuspicion =
+      typeof suspicionScore === 'number' && suspicionScore >= 0.4 && suspicionScore < 0.7;
+    const shouldVerifyCustomer =
+      !verificationContext && (mediumConfidence || mediumSuspicion);
 
-    console.log(`   🏛️ Tribunal complete: ${llmDecision.decision} (${(llmDecision.confidence * 100).toFixed(0)}% confident)`);
+    if (shouldVerifyCustomer) {
+      const activeSession = await db
+        .collection(COLLECTIONS.VERIFICATION_SESSIONS)
+        .find({
+          transactionId,
+          status: { $in: ['PENDING', 'VERIFIED'] },
+          expiresAt: { $gt: new Date() },
+        })
+        .sort({ createdAt: -1 })
+        .limit(1)
+        .toArray();
+
+      let sessionId = activeSession[0]?.sessionId;
+      if (!sessionId) {
+        const notification = await triggerCustomerNotification(transactionId);
+        sessionId = notification.sessionId;
+      }
+
+      await db.collection(COLLECTIONS.TRANSACTIONS).updateOne(
+        { transactionId },
+        {
+          $set: {
+            verificationRequired: true,
+            verificationStatus: 'PENDING',
+            currentAgent: 'Customer Notification Agent',
+            updatedAt: new Date(),
+          },
+          $push: {
+            agentHistory: 'Customer Notification Agent' as any,
+          },
+        }
+      );
+
+      await db.collection(COLLECTIONS.DECISIONS).insertOne({
+        decisionId: `dec_buyer_verify_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        transactionId,
+        agentName: 'Buyer/Decision Agent',
+        decision: 'ESCALATE',
+        confidence: llmDecision.confidence,
+        reasoning: 'Medium-risk case. Requested customer verification before final decision.',
+        riskFactors: llmDecision.riskFactors || [],
+        signalsUsed: allSignals.map((s) => s.signalType),
+        signalCost: totalSpent,
+        timestamp: new Date(),
+        isFinal: false,
+        action: 'REQUEST_CUSTOMER_VERIFICATION',
+      });
+
+      await db.collection(COLLECTIONS.AGENT_STEPS).insertOne({
+        transactionId,
+        stepNumber: await db.collection(COLLECTIONS.AGENT_STEPS).countDocuments({ transactionId }) + 1,
+        agentName: 'Buyer/Decision Agent',
+        action: 'VERIFICATION_REQUESTED',
+        timestamp: new Date(),
+        input: {
+          confidence: llmDecision.confidence,
+          suspicionScore,
+          reason: 'Medium risk requires customer confirmation',
+        },
+        output: { sessionId },
+      });
+
+      // Complete transaction with decision even when verification is requested
+      // Verification is a separate process - the decision should still be shown
+      const existingTotalCost =
+        typeof transaction.totalCost === 'number' ? transaction.totalCost : 0;
+      const updatedTotalCost = existingTotalCost + totalSpent;
+
+      await db.collection(COLLECTIONS.TRANSACTIONS).updateOne(
+        { transactionId },
+        {
+          $set: {
+            status: 'COMPLETED',
+            finalDecision: llmDecision.decision,
+            confidence: llmDecision.confidence,
+            totalCost: updatedTotalCost,
+            verificationRequired: true,
+            verificationStatus: 'PENDING',
+            updatedAt: new Date(),
+            currentAgent: 'Buyer/Decision Agent',
+          },
+          $push: {
+            agentHistory: 'Buyer/Decision Agent' as any,
+          },
+        }
+      );
+
+      // Log final decision (even with verification requested)
+      await db.collection(COLLECTIONS.DECISIONS).insertOne({
+        decisionId: `dec_buyer_verify_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        transactionId,
+        agentName: 'Buyer/Decision Agent',
+        decision: llmDecision.decision,
+        confidence: llmDecision.confidence,
+        reasoning: `${llmDecision.reasoning} (Customer verification requested for additional confirmation)`,
+        riskFactors: llmDecision.riskFactors || [],
+        signalsUsed: allSignals.map((s) => s.signalType),
+        signalCost: totalSpent,
+        totalCost: updatedTotalCost,
+        timestamp: new Date(),
+        isFinal: true,
+        action: 'REQUEST_CUSTOMER_VERIFICATION',
+        verificationSessionId: sessionId,
+      });
+
+      console.log(`   ✅ Final decision: ${llmDecision.decision} (${Math.round((llmDecision.confidence || 0) * 100)}% confidence)`);
+      console.log(`   WARNING: Medium risk detected. Customer verification requested (session: ${sessionId}).`);
+
+      return {
+        success: true,
+        verificationRequired: true,
+        sessionId,
+        decision: llmDecision.decision,
+        confidence: llmDecision.confidence,
+      };
+    }
+
+    const existingTotalCost =
+      typeof transaction.totalCost === 'number' ? transaction.totalCost : 0;
+    const updatedTotalCost = existingTotalCost + totalSpent;
 
     // Step 6: Update transaction to COMPLETED
     await db.collection(COLLECTIONS.TRANSACTIONS).updateOne(
@@ -154,7 +346,7 @@ export async function runBuyerDecisionAgent(
           status: 'COMPLETED',
           finalDecision: llmDecision.decision,
           confidence: llmDecision.confidence,
-          totalCost: totalSpent,
+          totalCost: updatedTotalCost,
           updatedAt: new Date(),
           currentAgent: 'Buyer/Decision Agent',
         },
@@ -175,8 +367,10 @@ export async function runBuyerDecisionAgent(
       riskFactors: llmDecision.riskFactors || [],
       signalsUsed: allSignals.map((s) => s.signalType),
       signalCost: totalSpent,
+      totalCost: updatedTotalCost,
       timestamp: new Date(),
       isFinal: true,
+      verificationContext: verificationContext || null,
     });
 
     // Step 8: Log final decision to timeline
@@ -191,7 +385,7 @@ export async function runBuyerDecisionAgent(
       input: {
         purchaseList,
         signalsAvailable: allSignals.length,
-        totalCost: totalSpent,
+        totalCost: updatedTotalCost,
       },
       output: {
         decision: llmDecision.decision,
@@ -203,11 +397,6 @@ export async function runBuyerDecisionAgent(
       metadata: {
         agentDecisionsReviewed: decisions.length,
         llmModel: 'llama-v3p3-70b-instruct',
-        debateResult: {
-          defense: debateResult.defenseArgument,
-          prosecution: debateResult.prosecutionArgument,
-          verdict: debateResult.arbiterVerdict,
-        },
       },
     });
 
@@ -218,7 +407,6 @@ export async function runBuyerDecisionAgent(
       decision: llmDecision.decision,
       confidence: llmDecision.confidence,
       totalCost: totalSpent,
-      debateResult, // Include for API consumers
     };
   } catch (error) {
     console.error(`❌ [Buyer/Decision Agent] Failed:`, error);

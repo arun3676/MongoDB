@@ -148,20 +148,22 @@ export async function GET(
     const caseData = result[0];
 
     // Find final decision from decisions array
+    // Check for Final Reviewer first, then Buyer/Decision Agent with isFinal=true, then any decision with isFinal=true
     const finalDecisionRecord = caseData.decisions?.find(
-      (d: any) => d.agentName === 'Final Reviewer' || d.isFinal === true
+      (d: any) => d.agentName === 'Final Reviewer' || 
+                  (d.agentName === 'Buyer/Decision Agent' && d.isFinal === true) ||
+                  d.isFinal === true
     );
 
-    // Extract debate data from Buyer Decision agent's metadata
-    const buyerDecision = caseData.decisions?.find(
-      (d: any) => d.agentName === 'Buyer Decision'
-    );
+    // Latest customer verification session (if any)
+    const verificationSession = await db
+      .collection(COLLECTIONS.VERIFICATION_SESSIONS)
+      .find({ transactionId })
+      .sort({ createdAt: -1 })
+      .limit(1)
+      .toArray();
 
-    const debateData = buyerDecision?.metadata?.debateResult ? {
-      defense: buyerDecision.metadata.debateResult.defense,
-      prosecution: buyerDecision.metadata.debateResult.prosecution,
-      verdict: buyerDecision.metadata.debateResult.verdict
-    } : null;
+    const latestVerification = verificationSession[0];
 
     // Build finalDecision object for UI (only if status is COMPLETED)
     const finalDecisionObj =
@@ -272,8 +274,17 @@ export async function GET(
       // Final decision object (only when COMPLETED)
       finalDecision: finalDecisionObj,
 
-      // Debate tribunal data (if available)
-      debate: debateData,
+      // Customer notification / verification state
+      verificationSession: latestVerification
+        ? {
+            sessionId: latestVerification.sessionId,
+            status: latestVerification.status,
+            expiresAt: latestVerification.expiresAt,
+            customerResponse: latestVerification.customerResponse,
+            identityVerified: latestVerification.identityVerified,
+            createdAt: latestVerification.createdAt,
+          }
+        : null,
     };
 
     return NextResponse.json(response);

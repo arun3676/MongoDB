@@ -28,6 +28,7 @@
 import { getDatabase, COLLECTIONS } from '../mongodb';
 import { initializeDatabase } from '../initDb';
 import { runPolicyAgent } from './policy-agent';
+import { getAnomalyScore } from '../ml/isolation-forest-client';
 
 /**
  * Create a new fraud case and perform suspicion analysis
@@ -50,11 +51,46 @@ export async function runSuspicionAgent(transactionData: {
   try {
     console.log(`\n🔍 [Suspicion Agent] Analyzing ${transactionData.transactionId}`);
 
-    // Step 1: Calculate suspicion score using heuristics
-    const suspicionScore = calculateSuspicionScore(transactionData);
-    const riskLevel = suspicionScore < 0.3 ? 'LOW' : suspicionScore < 0.7 ? 'MEDIUM' : 'HIGH';
+    // Step 1: Get anomaly score from Isolation Forest ML service
+    const mlResult = await getAnomalyScore({
+      amount: transactionData.amount,
+      accountAgeDays: transactionData.metadata?.accountAgeDays,
+      confidence: 0.0, // Not available yet at this stage
+      totalCost: 0.0, // Not available yet at this stage
+      newAccount: transactionData.metadata?.newAccount || false,
+      internationalTransfer: transactionData.metadata?.internationalTransfer || false,
+      unusualHour: transactionData.metadata?.unusualHour || false,
+      riskFlagCount: Array.isArray(transactionData.metadata?.riskFlags)
+        ? transactionData.metadata.riskFlags.length
+        : 0,
+    });
 
-    console.log(`   Suspicion Score: ${suspicionScore.toFixed(2)} (${riskLevel})`);
+    // Step 2: Calculate suspicion score using heuristics
+    const heuristicScore = calculateSuspicionScore(transactionData);
+
+    // Step 3: Combine ML anomaly score with heuristics
+    // Weight: 60% ML score, 40% heuristics (ML is more sophisticated)
+    let suspicionScore: number;
+    let mlAnomalyScore: number | null = null;
+    let mlExplanation: string | null = null;
+
+    if (mlResult) {
+      mlAnomalyScore = mlResult.anomalyScore;
+      mlExplanation = mlResult.explanation;
+      // Combine: weighted average of ML score and heuristics
+      suspicionScore = mlResult.anomalyScore * 0.6 + heuristicScore * 0.4;
+      console.log(`   🤖 ML Anomaly Score: ${mlResult.anomalyScore.toFixed(2)}`);
+      console.log(`   📊 Heuristic Score: ${heuristicScore.toFixed(2)}`);
+      console.log(`   🎯 Combined Score: ${suspicionScore.toFixed(2)}`);
+    } else {
+      // Fallback: use heuristics only if ML service unavailable
+      suspicionScore = heuristicScore;
+      console.log(`   ⚠️  ML service unavailable, using heuristics only`);
+      console.log(`   📊 Heuristic Score: ${heuristicScore.toFixed(2)}`);
+    }
+
+    const riskLevel = suspicionScore < 0.3 ? 'LOW' : suspicionScore < 0.7 ? 'MEDIUM' : 'HIGH';
+    console.log(`   ✅ Final Suspicion Score: ${suspicionScore.toFixed(2)} (${riskLevel})`);
 
     // Step 2: Create the case in MongoDB
     const caseDocument = {
@@ -135,6 +171,9 @@ export async function runSuspicionAgent(transactionData: {
         riskHeuristics,
         budgetAllocated: 1.0,
         nextAgent: 'Policy Agent',
+        mlAnomalyScore: mlAnomalyScore || undefined,
+        mlExplanation: mlExplanation || undefined,
+        mlServiceUsed: mlResult !== null,
       },
 
       metadata: {

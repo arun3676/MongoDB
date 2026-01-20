@@ -8,11 +8,10 @@ import CostTracker from '../../components/CostTracker';
 import AgentTimeline from '../../components/AgentTimeline';
 import SignalCard from '../../components/SignalCard';
 import DecisionCard from '../../components/DecisionCard';
-import DebateCard from '../../components/DebateCard';
 import FinalDecision from '../../components/FinalDecision';
 import AuditDownload from '../../components/AuditDownload';
 import LiveTerminal from '../../components/LiveTerminal';
-import DebateView from '../../components/DebateView';
+import CustomerNotificationCard from '../../components/CustomerNotificationCard';
 
 // TypeScript Types
 interface Transaction {
@@ -87,6 +86,14 @@ interface CaseData {
   signals: Signal[];
   decisions: Decision[];
   totalCost: number;
+  verificationSession?: {
+    sessionId: string;
+    status: string;
+    expiresAt?: string | Date;
+    customerResponse?: string;
+    identityVerified?: boolean;
+    createdAt?: string | Date;
+  } | null;
   finalDecision?: {
     decision: 'APPROVE' | 'DENY';
     confidence: number;
@@ -98,28 +105,6 @@ interface CaseData {
       llmModel?: string;
     };
     riskFactorsCount?: number;
-  };
-  debate?: {
-    defense: {
-      confidence: number;
-      reasoning: string;
-      keyPoints?: string[];
-      mitigatingFactors?: string[];
-    };
-    prosecution: {
-      confidence: number;
-      reasoning: string;
-      keyPoints?: string[];
-      aggravatingFactors?: string[];
-    };
-    verdict: {
-      decision: 'APPROVE' | 'DENY';
-      confidence: number;
-      reasoning: string;
-      defenseStrength: number;
-      prosecutionStrength: number;
-      decidingFactors?: string[];
-    };
   };
   payments: PaymentEntry[];
   budget?: {
@@ -263,7 +248,11 @@ export default function CaseDetailPage() {
         </div>
 
         {/* SECOND: Case Header */}
-        <CaseHeader transaction={caseData.transaction} status={caseData.status} />
+        <CaseHeader
+          transaction={caseData.transaction}
+          status={caseData.status}
+          verificationSession={caseData.verificationSession || null}
+        />
 
         {/* Cost Tracker */}
         <CostTracker
@@ -272,19 +261,10 @@ export default function CaseDetailPage() {
           spentSoFar={caseData.budget?.spentSoFar}
         />
 
+        {/* Customer Notification & Verification */}
+        <CustomerNotificationCard verificationSession={caseData.verificationSession || null} />
+
         <div className="space-y-6">
-          {/* Debate visualization - Prosecution & Defense */}
-          <DebateView timeline={caseData.timeline} />
-
-          {/* Consensus/Debate Summary Card (Alternative view) */}
-          {caseData.debate && (
-            <DebateCard
-              defense={caseData.debate.defense}
-              prosecution={caseData.debate.prosecution}
-              verdict={caseData.debate.verdict}
-            />
-          )}
-
           {/* Signals Grid */}
           {caseData.signals.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -47,6 +47,31 @@
 }
 
 /* ============================================
+   Ambient Night Theme
+   ============================================ */
+
+html[data-theme='night'] {
+    --carbon: #111521;
+    --carbon-light: #0F1320;
+    --carbon-lighter: #151A26;
+
+    --mint: #6B8CFF;
+    --mint-dim: rgba(107, 140, 255, 0.6);
+    --mint-glow: rgba(107, 140, 255, 0.08);
+
+    --border-color: #1F2633;
+    --border-light: #1A2030;
+    --border-dark: #2A3444;
+
+    --text-primary: #E6E9F0;
+    --text-secondary: #B8BFCC;
+    --text-muted: #8B94A6;
+
+    --glass-bg: rgba(18, 24, 36, 0.9);
+    --glass-border: rgba(42, 52, 68, 0.6);
+}
+
+/* ============================================
    Base Styles
    ============================================ */
 
@@ -63,7 +88,7 @@ html {
 body {
     margin: 0;
     padding: 0;
-    background-color: #F8FAFC;
+    background-color: var(--carbon-light);
     color: var(--text-primary);
     min-height: 100vh;
     font-family: 'Inter', system-ui, sans-serif;
@@ -74,7 +99,7 @@ body {
    ============================================ */
 
 .bg-grid {
-    background-color: #F8FAFC;
+    background-color: var(--carbon-light);
     background-image:
         radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
         linear-gradient(rgba(229, 231, 235, 0.4) 1px, transparent 1px),
@@ -84,11 +109,82 @@ body {
 }
 
 .bg-grid-subtle {
-    background-color: #F8FAFC;
+    background-color: var(--carbon-light);
     background-image:
         linear-gradient(rgba(229, 231, 235, 0.2) 1px, transparent 1px),
         linear-gradient(90deg, rgba(229, 231, 235, 0.2) 1px, transparent 1px);
     background-size: 32px 32px;
+}
+
+/* ============================================
+   Ambient Night Overrides for Tailwind Utilities
+   ============================================ */
+
+html[data-theme='night'] .bg-white {
+    background-color: #121722;
+}
+
+html[data-theme='night'] .bg-gray-50 {
+    background-color: #0F1320;
+}
+
+html[data-theme='night'] .bg-gray-100 {
+    background-color: #151B28;
+}
+
+html[data-theme='night'] .bg-neutral-50 {
+    background-color: #151A26;
+}
+
+html[data-theme='night'] .bg-neutral-50\/50 {
+    background-color: rgba(21, 26, 38, 0.6);
+}
+
+html[data-theme='night'] .bg-blue-50 {
+    background-color: rgba(107, 140, 255, 0.12);
+}
+
+html[data-theme='night'] .text-gray-900 {
+    color: #E6E9F0;
+}
+
+html[data-theme='night'] .text-gray-700 {
+    color: #C3CAD7;
+}
+
+html[data-theme='night'] .text-gray-600 {
+    color: #B0B7C5;
+}
+
+html[data-theme='night'] .text-gray-500 {
+    color: #98A2B3;
+}
+
+html[data-theme='night'] .text-gray-400 {
+    color: #7F889A;
+}
+
+html[data-theme='night'] .text-gray-300 {
+    color: #6B7384;
+}
+
+html[data-theme='night'] .border-gray-100 {
+    border-color: #1F2633;
+}
+
+html[data-theme='night'] .border-gray-200 {
+    border-color: #263042;
+}
+
+html[data-theme='night'] .border-blue-100 {
+    border-color: rgba(107, 140, 255, 0.2);
+}
+
+html[data-theme='night'] .shadow-xl,
+html[data-theme='night'] .shadow-2xl,
+html[data-theme='night'] .shadow-md,
+html[data-theme='night'] .shadow-sm {
+    box-shadow: 0 12px 32px rgba(5, 8, 16, 0.45);
 }
 
 /* ============================================

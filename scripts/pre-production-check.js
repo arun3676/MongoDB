@@ -71,7 +71,6 @@ const requiredFiles = [
   'app/components/DecisionCard.tsx',
   'app/components/FinalDecision.tsx',
   'app/components/AuditDownload.tsx',
-  'app/components/SubmitForm.tsx',
   'app/components/StatusBadge.tsx',
   'app/components/TimelineStep.tsx',
 ];
@@ -115,7 +114,7 @@ function checkImports(filePath, requiredImports) {
 }
 
 info('Checking home page imports...');
-checkImports('app/page.tsx', ['import SubmitForm']);
+checkImports('app/page.tsx', []);
 
 info('Checking case detail page imports...');
 checkImports('app/case/[transactionId]/page.tsx', [
@@ -138,7 +137,6 @@ const clientComponents = [
   'app/components/SignalCard.tsx',
   'app/components/DecisionCard.tsx',
   'app/components/AuditDownload.tsx',
-  'app/components/SubmitForm.tsx',
   'app/components/TimelineStep.tsx',
 ];
 

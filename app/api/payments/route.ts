@@ -75,25 +75,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Execute REAL CDP payment (on-chain transaction)
-    console.log(`[Payment] Executing CDP payment for ${signalType} signal ($${amount})`);
+    // Execute CDP payment (real on-chain OR mock mode)
+    const isMockMode = process.env.USE_MOCK_PAYMENTS === 'true' || 
+                      process.env.USE_MOCK_PAYMENTS === '1' ||
+                      !process.env.CDP_API_KEY_NAME;
+    
+    if (isMockMode) {
+      console.log(`[Payment] 🎭 MOCK MODE: Simulating CDP payment for ${signalType} signal ($${amount})`);
+    } else {
+      console.log(`[Payment] Executing REAL CDP payment for ${signalType} signal ($${amount})`);
+    }
 
     const cdpPayment = await payForSignal(signalType, amount, transactionId);
 
     if (!cdpPayment.success) {
-      console.error(`[Payment] CDP payment failed:`, cdpPayment.error);
+      console.error(`[Payment] Payment failed:`, cdpPayment.error);
       return NextResponse.json(
         {
           success: false,
-          error: 'CDP payment failed',
+          error: 'Payment failed',
           details: cdpPayment.error,
-          hint: 'Check CDP wallet balance and credentials. Ensure wallet is funded with USDC on Base Sepolia.',
+          hint: isMockMode 
+            ? 'Mock payment failed - check logs for details'
+            : 'Check CDP wallet balance and credentials. Ensure wallet is funded with USDC on Base Sepolia. Or set USE_MOCK_PAYMENTS=true for demo mode.',
         },
         { status: 500 }
       );
     }
 
-    console.log(`[Payment] CDP payment successful: ${cdpPayment.txHash}`);
+    if (cdpPayment.mock) {
+      console.log(`[Payment] ✅ Mock payment successful: ${cdpPayment.txHash?.substring(0, 20)}...`);
+    } else {
+      console.log(`[Payment] ✅ CDP payment confirmed: ${cdpPayment.txHash}`);
+    }
 
     // Generate payment ID and proof token
     const paymentId = generatePaymentId();
@@ -117,6 +131,7 @@ export async function POST(request: NextRequest) {
         txHash: cdpPayment.txHash,
         networkId: cdpPayment.networkId,
         explorerUrl: `https://sepolia.basescan.org/tx/${cdpPayment.txHash}`,
+        mock: cdpPayment.mock || false, // Track if this was a mock payment
       },
 
       // x402 specific details - this is the audit trail

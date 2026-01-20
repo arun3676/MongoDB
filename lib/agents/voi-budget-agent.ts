@@ -61,9 +61,20 @@ export async function runVOIAgent(transactionId: string) {
       agentName: 'Suspicion Agent',
     });
 
-    const suspicionScore = suspicionStep?.output?.suspicionScore || 0.5;
+    const baseSuspicionScore = suspicionStep?.output?.suspicionScore || 0.5;
+    const policyStep = await db.collection(COLLECTIONS.AGENT_STEPS).findOne({
+      transactionId,
+      agentName: 'Policy Agent',
+    });
 
-    console.log(`   Suspicion: ${suspicionScore.toFixed(2)}`);
+    const voiPriority = policyStep?.output?.voiPriority === 'HIGH' ? 'HIGH' : 'NORMAL';
+    const priorityBoost = voiPriority === 'HIGH' ? 0.15 : 0;
+    const suspicionScore = Math.min(1, baseSuspicionScore + priorityBoost);
+
+    console.log(
+      `   Suspicion: ${baseSuspicionScore.toFixed(2)}${voiPriority === 'HIGH' ? ` (priority boosted to ${suspicionScore.toFixed(2)})` : ''}`
+    );
+    console.log(`   VOI Priority: ${voiPriority}`);
 
     // Step 3: Discover tools from x402 Bazaar
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3001';
@@ -204,6 +215,9 @@ export async function runVOIAgent(transactionId: string) {
       input: {
         toolsEvaluated: tools.length,
         suspicionScore,
+        baseSuspicionScore,
+        voiPriority,
+        priorityBoost,
         transactionAmount: transaction.amount,
         expectedLoss: transaction.amount * suspicionScore,
       },

@@ -8,9 +8,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  )
+  // Inherit the top-level <html>/<body> from app/layout.tsx to avoid nesting
+  return children
 }

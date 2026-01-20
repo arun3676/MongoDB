@@ -1,9 +1,9 @@
 'use client'
 
-import type { Metadata } from 'next'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Home, FileText, BarChart3, ChevronLeft, ChevronRight, Shield, ShoppingCart } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { BarChart3, ChevronLeft, ChevronRight, FileText, Home, Moon, Shield, ShoppingCart, Sun } from 'lucide-react'
 import './globals.css'
 
 // Navigation items for Mission Control
@@ -19,7 +19,12 @@ const navItems = [
     icon: FileText,
   },
   {
-    label: 'Nexus Market',
+    label: 'Performance Analytics',
+    href: '/analytics',
+    icon: BarChart3,
+  },
+  {
+    label: 'Marketplace',
     href: '/marketplace',
     icon: ShoppingCart,
   },
@@ -27,6 +32,8 @@ const navItems = [
 
 function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isNightMode, setIsNightMode] = useState(false)
+  const router = useRouter()
 
   // Load collapsed state from localStorage on mount
   useEffect(() => {
@@ -36,12 +43,34 @@ function Sidebar() {
     }
   }, [])
 
+  // Load theme from localStorage on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme')
+    const night = savedTheme === 'night'
+    setIsNightMode(night)
+    document.documentElement.setAttribute('data-theme', night ? 'night' : 'light')
+  }, [])
+
   // Save collapsed state to localStorage
   const toggleCollapsed = () => {
     const newState = !isCollapsed
     setIsCollapsed(newState)
     localStorage.setItem('sidebar-collapsed', String(newState))
   }
+
+  const toggleTheme = () => {
+    const next = !isNightMode
+    setIsNightMode(next)
+    localStorage.setItem('theme', next ? 'night' : 'light')
+    document.documentElement.setAttribute('data-theme', next ? 'night' : 'light')
+  }
+
+  // Prefetch top-level nav routes for snappier navigation
+  useEffect(() => {
+    navItems.forEach((item) => {
+      router.prefetch(item.href)
+    })
+  }, [router])
 
   return (
     <aside
@@ -85,6 +114,7 @@ function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch
                 className={`flex items-center rounded-2xl transition-all duration-300 group ${isCollapsed ? 'justify-center p-3.5' : 'gap-4 px-5 py-4'
                   } hover:bg-blue-50/50 hover:text-blue-600 text-gray-500 font-bold`}
                 title={isCollapsed ? item.label : undefined}
@@ -96,53 +126,33 @@ function Sidebar() {
           })}
         </div>
 
-        {/* Status Section - Hidden when collapsed */}
-        {!isCollapsed && (
-          <div className="mt-12 pt-8 border-t border-gray-50 px-4">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">System Integrity</p>
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-                  <span className="text-xs font-bold text-gray-600">Agents Operational</span>
-                </div>
-                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">Live</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
-                  <span className="text-xs font-bold text-gray-600">Database Cluster</span>
-                </div>
-                <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">Active</span>
-              </div>
-            </div>
-          </div>
-        )}
       </nav>
 
-      {/* Branding Section */}
-      <div className={`px-8 py-8 border-t border-gray-50 ${isCollapsed ? 'flex flex-col items-center gap-6' : ''}`}>
-        {!isCollapsed ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all cursor-crosshair">
-              <span className="text-lg">🔥</span>
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">Fireworks Engine</span>
-            </div>
-            <div className="flex items-center gap-3 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all cursor-crosshair">
-              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="#00ED64">
-                <path d="M17.193 9.555c-1.264-5.58-4.252-7.414-4.573-8.115-.28-.394-.53-.954-.735-1.44-.036.495-.055.685-.523 1.184-.723.566-4.438 3.682-4.74 10.02-.282 5.912 4.27 9.435 4.888 9.884l.07.05A73.49 73.49 0 0111.91 24h.481c.114-1.032.284-2.056.51-3.07.417-.296 4.488-3.29 4.293-11.375z" />
-              </svg>
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">MongoDB Core</span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-4 opacity-30">
-            <span className="text-lg">🔥</span>
-            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.193 9.555c-1.264-5.58-4.252-7.414-4.573-8.115-.28-.394-.53-.954-.735-1.44-.036.495-.055.685-.523 1.184-.723.566-4.438 3.682-4.74 10.02-.282 5.912 4.27 9.435 4.888 9.884l.07.05A73.49 73.49 0 0111.91 24h.481c.114-1.032.284-2.056.51-3.07.417-.296 4.488-3.29 4.293-11.375z" />
-            </svg>
-          </div>
-        )}
+      {/* Theme Toggle */}
+      <div className={`px-6 pb-6 ${isCollapsed ? 'px-4' : ''}`}>
+        <button
+          onClick={toggleTheme}
+          className={`w-full flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs font-bold text-gray-600 transition hover:border-blue-200 ${isCollapsed ? 'px-3' : ''
+            }`}
+          aria-label="Toggle night mode"
+        >
+          {isCollapsed ? (
+            isNightMode ? <Moon className="w-4 h-4 text-blue-500" /> : <Sun className="w-4 h-4 text-amber-500" />
+          ) : (
+            <>
+              <span className="uppercase tracking-[0.2em]">Night Mode</span>
+              <span
+                className={`relative inline-flex h-5 w-10 items-center rounded-full transition ${isNightMode ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${isNightMode ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                />
+              </span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* User Section */}
@@ -163,6 +173,8 @@ function Sidebar() {
 
 function RootLayoutContent({ children }: { children: React.ReactNode }) {
   const [sidebarWidth, setSidebarWidth] = useState(280)
+  const pathname = usePathname()
+  const [isTransitioning, setIsTransitioning] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-collapsed')
@@ -188,6 +200,13 @@ function RootLayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [sidebarWidth])
 
+  // Lightweight page transition feel on route change
+  useEffect(() => {
+    setIsTransitioning(true)
+    const timeout = setTimeout(() => setIsTransitioning(false), 180)
+    return () => clearTimeout(timeout)
+  }, [pathname])
+
   return (
     <main
       className="min-h-screen bg-neutral-50/50 transition-all duration-300"
@@ -197,7 +216,10 @@ function RootLayoutContent({ children }: { children: React.ReactNode }) {
         <div className="absolute -top-40 -right-40 w-full h-full bg-blue-500 blur-[150px] rounded-full"></div>
       </div>
 
-      <div className="relative z-10 px-8 py-8 md:px-12 md:py-12">
+      <div
+        className={`relative z-10 px-8 py-8 md:px-12 md:py-12 transition-all duration-200 ${isTransitioning ? 'opacity-60 translate-y-1' : 'opacity-100 translate-y-0'
+          }`}
+      >
         {children}
       </div>
     </main>
@@ -211,7 +233,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-white min-h-screen selection:bg-blue-100 selection:text-blue-900">
+      <body className="min-h-screen selection:bg-blue-100 selection:text-blue-900">
         <Sidebar />
         <RootLayoutContent>{children}</RootLayoutContent>
       </body>

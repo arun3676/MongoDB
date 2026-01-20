@@ -40,6 +40,7 @@
  */
 
 import { getDatabase, COLLECTIONS } from '../mongodb';
+import { triggerCustomerNotification } from './customer-notification-agent';
 import { callLLM, formatTransactionForLLM, formatSignalForLLM } from '../fireworks';
 
 /**
@@ -254,6 +255,11 @@ Make your final decision. This is the ultimate call - APPROVE or DENY.`;
         },
       }
     );
+
+    // Step 10: If DENIED, trigger customer notification & verification
+    if (finalDecision.decision === 'DENY') {
+      await triggerCustomerNotification(transactionId);
+    }
 
     console.log(`🎉 [Final Reviewer] Case ${transactionId} COMPLETED: ${finalDecision.decision}`);
 

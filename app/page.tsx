@@ -1,14 +1,9 @@
 import GlobalStats from './components/GlobalStats';
-import SubmitForm from './components/SubmitForm';
+import MarketplacePreview from './components/MarketplacePreview';
 
 export default function Home() {
     return (
         <div className="max-w-6xl mx-auto space-y-20">
-            {/* Dashboard Section */}
-            <section>
-                <GlobalStats />
-            </section>
-
             {/* Hero Content */}
             <section className="text-center py-10">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-8">
@@ -41,9 +36,14 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* Initiation Section */}
-            <section id="audit">
-                <SubmitForm />
+            {/* Marketplace Preview */}
+            <section>
+                <MarketplacePreview />
+            </section>
+
+            {/* Mission Control - compact above swarm */}
+            <section>
+                <GlobalStats />
             </section>
 
             {/* Intelligence Cards */}
@@ -73,12 +73,6 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* Footer Branding */}
-            <footer className="pt-20 pb-10 border-t border-gray-100 text-center">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">
-                    Engineered by Antigravity · Secured by Nexus Protocol
-                </p>
-            </footer>
         </div>
     );
 }

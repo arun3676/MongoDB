@@ -235,6 +235,29 @@ async function createIndexes(db: Db): Promise<void> {
     { key: { price: 1 }, name: 'price_idx' },
   ]);
 
+  // Verification sessions collection indexes
+  await safeCreateIndexes(db.collection(COLLECTIONS.VERIFICATION_SESSIONS), [
+    { key: { sessionId: 1 }, name: 'sessionId_unique', unique: true },
+    { key: { transactionId: 1, createdAt: -1 }, name: 'verification_transaction_createdAt' },
+    { key: { 'metadata.notificationTarget.phone': 1, createdAt: -1 }, name: 'verification_phone_createdAt' },
+    { key: { expiresAt: 1 }, name: 'verification_expiresAt' },
+  ]);
+
+  // Verification events collection indexes
+  await safeCreateIndexes(db.collection(COLLECTIONS.VERIFICATIONS), [
+    { key: { verificationId: 1 }, name: 'verificationId_unique', unique: true },
+    { key: { transactionId: 1, createdAt: -1 }, name: 'verifications_transaction_createdAt' },
+    { key: { sessionId: 1, createdAt: -1 }, name: 'verifications_session_createdAt' },
+  ]);
+
+  // Marketplace orders collection indexes
+  await safeCreateIndexes(db.collection(COLLECTIONS.MARKETPLACE_ORDERS), [
+    { key: { orderId: 1 }, name: 'orderId_unique', unique: true },
+    { key: { transactionId: 1 }, name: 'marketplace_transactionId' },
+    { key: { 'buyer.id': 1, createdAt: -1 }, name: 'marketplace_buyer_createdAt' },
+    { key: { status: 1, createdAt: -1 }, name: 'marketplace_status_createdAt' },
+  ]);
+
   console.log('  ✓ Indexes created');
 }
 

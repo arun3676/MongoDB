@@ -66,13 +66,13 @@ export async function GET() {
     const lowRiskCasesAvoided = lowRiskAgg[0]?.count ?? 0;
     const efficiencyGain = Number((lowRiskCasesAvoided * NETWORK_SIGNAL_PRICE).toFixed(2));
 
-    // Average confidence of Arbiter (Debate Tribunal) decisions
+    // Average confidence of Final Reviewer decisions (production metric)
     const arbiterAgg = await db
       .collection(COLLECTIONS.DECISIONS)
       .aggregate([
         {
           $match: {
-            agentName: { $in: ['Debate Tribunal', 'Arbiter Agent'] },
+            agentName: 'Final Reviewer',
             confidence: { $exists: true },
           },
         },
