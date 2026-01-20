@@ -5,9 +5,9 @@ A multi-agent fraud detection system that uses value-of-information reasoning to
 ## Features
 
 ✨ **Multi-Agent Architecture**: Four specialized agents working in sequence (Suspicion → Policy → VOI/Budget → Buyer/Decision)  
-🛒 **Dynamic Tool Discovery**: Agents query x402 Bazaar for available fraud signals  
+📞 **Customer Notification & Verification**: Automatic outreach + secure verification on fraud suspicions  
 💰 **Budget-Aware Decisions**: VOI (Value of Information) reasoning for every signal purchase  
-🔗 **Blockchain Payments**: Coinbase Developer Platform wallets on Base Sepolia testnet  
+🔗 **Paywalled Signals (x402)**: Coinbase Developer Platform wallets on Base Sepolia testnet  
 📊 **Complete Audit Trail**: Every action logged in MongoDB Atlas  
 
 ---
@@ -109,28 +109,45 @@ Open your browser:
 fraudagent/
 ├── app/
 │   ├── api/                # API routes
+│   │   ├── analytics/      # Analytics endpoints
+│   │   ├── bazaar/         # Bazaar endpoints
 │   │   ├── case/           # Case management endpoints
-│   │   ├── signals/        # Signal endpoints (x402 paywalled)
+│   │   ├── marketplace/    # Marketplace endpoints
 │   │   ├── payments/       # Payment processing
+│   │   ├── signals/        # Signal endpoints (x402 paywalled)
+│   │   ├── verification/   # Verification endpoints
 │   │   └── health/         # Health check
+│   ├── analytics/          # Analytics UI
+│   ├── case/               # Case details UI
+│   ├── cases/              # Cases list UI
 │   ├── components/         # React UI components
+│   ├── marketplace/        # Marketplace UI
+│   ├── verify/             # Verification UI
 │   └── page.tsx            # Homepage
 ├── lib/
 │   ├── agents/             # Agent implementations
+│   │   ├── buyer-decision-agent.ts
+│   │   ├── customer-notification-agent.ts
+│   │   ├── final-reviewer.ts
+│   │   ├── l1-analyst.ts
+│   │   ├── l2-analyst.ts
 │   │   ├── orchestrator.ts
-│   │   ├── suspicion-agent.ts
 │   │   ├── policy-agent.ts
-│   │   ├── voi-budget-agent.ts
-│   │   └── buyer-decision-agent.ts
-│   ├── mongodb.ts          # MongoDB connection
-│   ├── initDb.ts           # Database schema initialization
-│   ├── fireworks.ts        # Fireworks AI integration
+│   │   ├── suspicion-agent.ts
+│   │   └── voi-budget-agent.ts
 │   ├── cdp-wallet.ts       # Coinbase CDP wallet integration
+│   ├── fireworks.ts        # Fireworks AI integration
+│   ├── initDb.ts           # Database schema initialization
+│   ├── marketplace/        # Marketplace utilities
+│   ├── mongodb.ts          # MongoDB connection
+│   ├── notifications.ts    # Notification utilities
+│   ├── voyage.ts           # Voyage AI integration
 │   └── x402.ts             # x402 payment protocol utilities
 ├── scripts/                # Utility scripts
 │   ├── check-env.js        # Environment variable validation
 │   ├── get-cdp-wallet-id.js # CDP wallet setup
-│   └── verify-cdp-setup.js  # CDP configuration verification
+│   ├── pre-production-check.js # Pre-production checks
+│   └── seed-demo.js        # Seed demo data
 ├── AGENTS.md               # Agent architecture documentation
 ├── env.local.template      # Environment variable template
 └── .env.local              # Your environment variables (not committed)
@@ -168,12 +185,12 @@ All collections and indexes are created automatically on first API request via `
 
 ## Agent Architecture
 
-The system uses four specialized agents that work sequentially:
+The system uses four specialized agents that work sequentially, each with distinct responsibilities (see `AGENTS.md` for details):
 
-1. **Suspicion Agent** - Initial risk assessment using heuristics
-2. **Policy Agent** - Rule-based filtering and escalation decisions
-3. **VOI/Budget Agent** - Value-of-information analysis for signal purchases
-4. **Buyer/Decision Agent** - Executes payments and makes final decisions
+1. **Explore Agent** - Codebase exploration, research, and understanding existing patterns (read-only operations).
+2. **UI Agent** - Frontend UI implementation - React components, Tailwind CSS, user interactions, API polling.
+3. **Orchestration Agent** - Agent logic, LLM integration, decision-making flow, MongoDB state management.
+4. **Payments Agent** - x402 payment protocol implementation, paywalled signal endpoints, mock payment provider, MongoDB payment ledger.
 
 See `AGENTS.md` for detailed agent documentation.
 
@@ -231,7 +248,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - **Frontend**: Next.js 15, React 18, Tailwind CSS
 - **Backend**: Next.js API routes
 - **Database**: MongoDB Atlas
-- **LLM**: Fireworks AI (Llama 3.3 70B)
+- **LLM**: Fireworks AI (Llama-v3p1-70b-instruct)
 - **Payments**: Coinbase Developer Platform (Base Sepolia)
 - **Language**: TypeScript
 

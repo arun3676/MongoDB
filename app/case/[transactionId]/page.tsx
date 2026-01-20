@@ -214,16 +214,16 @@ export default function CaseDetailPage() {
     );
   }
 
-  // Extract arbiter verdict from timeline for the unified verdict header
-  const arbiterStep = caseData.timeline
+  // Extract final reviewer verdict from timeline for the unified verdict header
+  const finalReviewerStep = caseData.timeline
     .slice()
     .reverse()
-    .find((step) => step.agentName === 'Arbiter Agent' && step.action === 'ARBITER_VERDICT');
+    .find((step) => step.agentName === 'Final Reviewer' && step.action === 'REVIEW_COMPLETED');
 
-  const arbiterVerdict = arbiterStep
+  const arbiterVerdict = finalReviewerStep
     ? {
-      output: arbiterStep.output as { reasoning?: string; decision?: string; confidence?: number },
-      metadata: arbiterStep.metadata as { model?: string },
+      output: finalReviewerStep.output as { reasoning?: string; decision?: string; confidence?: number },
+      metadata: finalReviewerStep.metadata as { model?: string },
     }
     : undefined;
 

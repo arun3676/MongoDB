@@ -9,5 +9,5 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   // Inherit the top-level <html>/<body> from app/layout.tsx to avoid nesting
-  return children
+  return <>{children}</>
 }
