@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import CaseHeader from '../../components/CaseHeader';
-import CostTracker from '../../components/CostTracker';
-import AgentTimeline from '../../components/AgentTimeline';
 import SignalCard from '../../components/SignalCard';
 import DecisionCard from '../../components/DecisionCard';
 import FinalDecision from '../../components/FinalDecision';
 import AuditDownload from '../../components/AuditDownload';
 import LiveTerminal from '../../components/LiveTerminal';
 import CustomerNotificationCard from '../../components/CustomerNotificationCard';
+import PaymentProofCard from '../../components/PaymentProofCard';
 
 // TypeScript Types
 interface Transaction {
@@ -254,13 +253,6 @@ export default function CaseDetailPage() {
           verificationSession={caseData.verificationSession || null}
         />
 
-        {/* Cost Tracker */}
-        <CostTracker
-          totalCost={caseData.totalCost}
-          signals={caseData.signals}
-          spentSoFar={caseData.budget?.spentSoFar}
-        />
-
         {/* Customer Notification & Verification */}
         <CustomerNotificationCard verificationSession={caseData.verificationSession || null} />
 
@@ -276,18 +268,20 @@ export default function CaseDetailPage() {
 
           {/* Agent Decisions Grid */}
           {caseData.decisions.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {caseData.decisions.map((decision) => (
                 <DecisionCard key={decision.decisionId} decision={decision} />
               ))}
             </div>
           )}
 
-          {/* SYSTEM LOGS (Penultimate Bottom) */}
-          <LiveTerminal transactionId={transactionId} />
+          {/* x402 Payment Proof Card */}
+          {caseData.payments && caseData.payments.length > 0 && (
+            <PaymentProofCard payments={caseData.payments} />
+          )}
 
-          {/* AGENT PULSE (Below System Logs) */}
-          <AgentTimeline timeline={caseData.timeline} payments={caseData.payments} />
+          {/* SYSTEM LOGS */}
+          <LiveTerminal transactionId={transactionId} />
         </div>
 
         {/* Audit Download (FINAL BOTTOM) */}

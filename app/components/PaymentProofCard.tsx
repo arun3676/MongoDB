@@ -1,148 +1,171 @@
-/**
- * PAYMENT PROOF CARD - x402 Payment Cycle Visualization
- *
- * Shows the complete 402 → Payment → 200 cycle proving the agent
- * acted as an autonomous economic actor using Coinbase CDP wallet
- */
-
 'use client';
 
+import { ExternalLink, Shield, CheckCircle2 } from 'lucide-react';
+
 interface PaymentProofCardProps {
-  signalType: string;
-  cost: number;
-  paymentProof?: string;
-  txHash?: string;
-  walletAddress?: string;
-  purchasedAt: Date | string;
-  paymentMethod?: string;
+  payments: Array<{
+    paymentId?: string;
+    signalType?: string;
+    amount?: number;
+    cdpDetails?: {
+      txHash?: string;
+      explorerUrl?: string;
+      walletId?: string;
+      networkId?: string;
+      mock?: boolean;
+    };
+    x402Details?: {
+      paymentProof?: string;
+      initialEndpoint?: string;
+      http402Response?: {
+        status?: number;
+        headers?: Record<string, string>;
+        timestamp?: Date | string;
+      };
+      paymentRequest?: {
+        method?: string;
+        endpoint?: string;
+        body?: Record<string, unknown>;
+        timestamp?: Date | string;
+      };
+      retryRequest?: {
+        method?: string;
+        endpoint?: string;
+        headers?: Record<string, string>;
+        timestamp?: Date | string;
+      };
+      http200Response?: {
+        status?: number;
+        dataReceived?: boolean;
+        timestamp?: Date | string;
+      };
+    };
+    createdAt?: Date | string;
+    status?: string;
+  }>;
 }
 
-export default function PaymentProofCard({
-  signalType,
-  cost,
-  paymentProof,
-  txHash,
-  walletAddress,
-  purchasedAt,
-  paymentMethod = 'CDP Wallet',
-}: PaymentProofCardProps) {
-  const formatTimestamp = (ts: Date | string) => {
-    const d = typeof ts === 'string' ? new Date(ts) : ts;
-    return d.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  };
+export default function PaymentProofCard({ payments }: PaymentProofCardProps) {
+  const x402Payments = payments.filter(
+    (p) => p.x402Details && p.status === 'COMPLETED' && p.cdpDetails
+  );
+
+  if (x402Payments.length === 0) {
+    return null;
+  }
 
   return (
-    <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border-2 border-purple-200 p-4 mt-4">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-xl">🔐</span>
-        <h4 className="text-sm font-bold text-gray-800">x402 Payment Proof</h4>
-        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-semibold ml-auto">
-          AUTONOMOUS PAYMENT
-        </span>
+    <div className="rounded-2xl border shadow-sm p-6" style={{ backgroundColor: '#1A1A1A', borderColor: '#262626' }}>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#3EB48920' }}>
+          <Shield className="w-5 h-5 text-mint-500" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold" style={{ color: '#E5E5E5' }}>x402 Payment Proof</h3>
+          <p className="text-xs font-mono" style={{ color: '#9CA3AF' }}>Proof of Signal Procurement</p>
+        </div>
       </div>
 
-      {/* Payment Cycle Visualization */}
-      <div className="space-y-3 mb-4">
-        {/* Step 1: 402 Payment Required */}
-        <div className="flex items-center gap-3">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-            <span className="text-xs font-bold text-red-700">402</span>
-          </div>
-          <div className="flex-1">
-            <div className="text-xs font-semibold text-gray-700">Payment Required</div>
-            <div className="text-xs text-gray-500">Signal endpoint returned 402 status</div>
-          </div>
-          <div className="text-right text-xs font-bold text-gray-700">${cost.toFixed(2)}</div>
-        </div>
+      <div className="space-y-4">
+        {x402Payments.map((payment, index) => (
+          <div
+            key={payment.paymentId || index}
+            className="rounded-xl border p-4"
+            style={{ backgroundColor: '#121212', borderColor: '#262626' }}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-bold font-mono uppercase" style={{ color: '#3EB489' }}>
+                    {payment.signalType || 'Unknown'} Signal
+                  </span>
+                  {payment.status === 'COMPLETED' && (
+                    <CheckCircle2 className="w-4 h-4 text-mint-500" />
+                  )}
+                </div>
+                <p className="text-xs font-mono" style={{ color: '#9CA3AF' }}>
+                  ${payment.amount?.toFixed(2)} USDC
+                </p>
+              </div>
+            </div>
 
-        {/* Arrow */}
-        <div className="flex items-center justify-center">
-          <div className="w-0.5 h-4 bg-purple-300"></div>
-        </div>
+            {/* CDP Transaction Hash */}
+            {payment.cdpDetails?.txHash && (
+              <div className="mb-3 pb-3 border-b" style={{ borderColor: '#262626' }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: '#9CA3AF' }}>
+                  CDP Transaction Hash
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs font-mono px-2 py-1 rounded bg-carbon-500" style={{ color: '#E5E5E5' }}>
+                    {payment.cdpDetails.txHash.substring(0, 20)}...
+                  </code>
+                  {payment.cdpDetails.explorerUrl && (
+                    <a
+                      href={payment.cdpDetails.explorerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs font-mono text-mint-500 hover:text-mint-400 transition-colors"
+                    >
+                      View <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+                {payment.cdpDetails.walletId && (
+                  <p className="text-[10px] font-mono mt-1.5" style={{ color: '#9CA3AF' }}>
+                    Wallet: {payment.cdpDetails.walletId.substring(0, 12)}...
+                  </p>
+                )}
+              </div>
+            )}
 
-        {/* Step 2: CDP Payment Executed */}
-        <div className="flex items-center gap-3 bg-white rounded-lg p-2">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-            <span className="text-xs">💳</span>
-          </div>
-          <div className="flex-1">
-            <div className="text-xs font-semibold text-gray-700">CDP Wallet Payment</div>
-            <div className="text-xs text-gray-500">Coinbase Developer Platform (Base Sepolia)</div>
-            {walletAddress && (
-              <div className="text-xs text-blue-600 font-mono mt-1">
-                {walletAddress.substring(0, 10)}...{walletAddress.substring(walletAddress.length - 8)}
+            {/* Payment Proof Token */}
+            {payment.x402Details?.paymentProof && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: '#9CA3AF' }}>
+                  Proof of Procurement
+                </p>
+                <code className="text-xs font-mono px-2 py-1 rounded block bg-carbon-500 break-all" style={{ color: '#E5E5E5' }}>
+                  {payment.x402Details.paymentProof}
+                </code>
+              </div>
+            )}
+
+            {/* x402 Flow Timeline */}
+            {payment.x402Details && (
+              <div className="mt-3 pt-3 border-t" style={{ borderColor: '#262626' }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: '#9CA3AF' }}>
+                  x402 Flow
+                </p>
+                <div className="space-y-1.5 text-xs font-mono" style={{ color: '#9CA3AF' }}>
+                  {payment.x402Details.http402Response && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+                      <span>402 Payment Required</span>
+                    </div>
+                  )}
+                  {payment.x402Details.paymentRequest && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                      <span>Payment Submitted</span>
+                    </div>
+                  )}
+                  {payment.x402Details.retryRequest && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-mint-500"></span>
+                      <span>Retry with Proof</span>
+                    </div>
+                  )}
+                  {payment.x402Details.http200Response && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                      <span>200 Signal Received</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
-        </div>
-
-        {/* Arrow */}
-        <div className="flex items-center justify-center">
-          <div className="w-0.5 h-4 bg-purple-300"></div>
-        </div>
-
-        {/* Step 3: 200 Data Received */}
-        <div className="flex items-center gap-3">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-            <span className="text-xs font-bold text-green-700">200</span>
-          </div>
-          <div className="flex-1">
-            <div className="text-xs font-semibold text-gray-700">Data Received</div>
-            <div className="text-xs text-gray-500">
-              {signalType.charAt(0).toUpperCase() + signalType.slice(1)} signal unlocked
-            </div>
-          </div>
-          <div className="text-xs text-green-600 font-semibold">✓ Verified</div>
-        </div>
-      </div>
-
-      {/* Payment Details */}
-      <div className="border-t border-purple-200 pt-3 space-y-2">
-        <div className="flex justify-between text-xs">
-          <span className="text-gray-600">Payment Method:</span>
-          <span className="font-semibold text-gray-800">{paymentMethod}</span>
-        </div>
-        <div className="flex justify-between text-xs">
-          <span className="text-gray-600">Timestamp:</span>
-          <span className="font-semibold text-gray-800">{formatTimestamp(purchasedAt)}</span>
-        </div>
-        {paymentProof && (
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-600">Payment Proof:</span>
-            <span className="font-mono text-xs text-purple-600">
-              {paymentProof.substring(0, 8)}...{paymentProof.substring(paymentProof.length - 6)}
-            </span>
-          </div>
-        )}
-        {txHash && (
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-600">Transaction Hash:</span>
-            <a
-              href={`https://sepolia.basescan.org/tx/${txHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-xs text-blue-600 hover:underline"
-            >
-              {txHash.substring(0, 8)}...{txHash.substring(txHash.length - 6)}
-            </a>
-          </div>
-        )}
-      </div>
-
-      {/* Economic Actor Badge */}
-      <div className="mt-4 pt-3 border-t border-purple-200">
-        <div className="bg-purple-100 rounded-lg p-2 text-center">
-          <div className="text-xs font-semibold text-purple-800">🤖 Autonomous Economic Actor</div>
-          <div className="text-xs text-purple-600 mt-1">
-            Agent independently executed payment using CDP wallet
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );

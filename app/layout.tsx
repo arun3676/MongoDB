@@ -74,19 +74,19 @@ function Sidebar() {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-white z-50 flex flex-col transition-all duration-300 border-r border-gray-100 ${isCollapsed ? 'w-[80px]' : 'w-[280px]'
+      className={`fixed left-0 top-0 h-screen bg-carbon-500 z-50 flex flex-col transition-all duration-300 border-r border-carbon-300 ${isCollapsed ? 'w-[80px]' : 'w-[280px]'
         }`}
     >
       {/* Logo / Brand */}
       <div className={`py-8 ${isCollapsed ? 'px-4' : 'px-8'}`}>
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-4'}`}>
-          <div className="w-12 h-12 rounded-2xl bg-blue-600 shadow-lg shadow-blue-500/20 flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-mint-500 shadow-lg shadow-mint-500/20 flex items-center justify-center shrink-0">
             <Shield className="w-6 h-6 text-white" />
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
-              <h1 className="text-lg font-black text-gray-900 tracking-tight leading-none mb-1 uppercase">Nexus Guard</h1>
-              <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] opacity-80">v2.402 Protocol</p>
+              <h1 className="text-lg font-black text-white tracking-tight leading-none mb-1 font-mono">Vigil</h1>
+              <p className="text-[10px] font-black text-mint-500 uppercase tracking-[0.2em] opacity-80">v2.402 Protocol</p>
             </div>
           )}
         </div>
@@ -99,9 +99,9 @@ function Sidebar() {
         aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         {isCollapsed ? (
-          <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+          <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-mint-500 transition-colors" />
         ) : (
-          <ChevronLeft className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+          <ChevronLeft className="w-3.5 h-3.5 text-gray-400 group-hover:text-mint-500 transition-colors" />
         )}
       </button>
 
@@ -116,10 +116,10 @@ function Sidebar() {
                 href={item.href}
                 prefetch
                 className={`flex items-center rounded-2xl transition-all duration-300 group ${isCollapsed ? 'justify-center p-3.5' : 'gap-4 px-5 py-4'
-                  } hover:bg-blue-50/50 hover:text-blue-600 text-gray-500 font-bold`}
+                  } hover:bg-mint-500/10 hover:text-mint-500 text-gray-400 font-bold`}
                 title={isCollapsed ? item.label : undefined}
               >
-                <Icon className={`w-5 h-5 transition-colors shrink-0 group-hover:text-blue-600 ${isCollapsed ? '' : 'opacity-70'}`} />
+                <Icon className={`w-5 h-5 transition-colors shrink-0 group-hover:text-mint-500 ${isCollapsed ? '' : 'opacity-70'}`} />
                 {!isCollapsed && <span className="text-sm uppercase tracking-widest leading-none">{item.label}</span>}
               </Link>
             )
@@ -132,17 +132,17 @@ function Sidebar() {
       <div className={`px-6 pb-6 ${isCollapsed ? 'px-4' : ''}`}>
         <button
           onClick={toggleTheme}
-          className={`w-full flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs font-bold text-gray-600 transition hover:border-blue-200 ${isCollapsed ? 'px-3' : ''
+          className={`w-full flex items-center justify-between rounded-xl border border-carbon-300 bg-carbon-400 px-4 py-3 text-xs font-bold text-gray-300 transition hover:border-mint-500/30 ${isCollapsed ? 'px-3' : ''
             }`}
           aria-label="Toggle night mode"
         >
           {isCollapsed ? (
-            isNightMode ? <Moon className="w-4 h-4 text-blue-500" /> : <Sun className="w-4 h-4 text-amber-500" />
+            isNightMode ? <Moon className="w-4 h-4 text-mint-500" /> : <Sun className="w-4 h-4 text-amber-500" />
           ) : (
             <>
               <span className="uppercase tracking-[0.2em]">Night Mode</span>
               <span
-                className={`relative inline-flex h-5 w-10 items-center rounded-full transition ${isNightMode ? 'bg-blue-600' : 'bg-gray-300'
+                className={`relative inline-flex h-5 w-10 items-center rounded-full transition ${isNightMode ? 'bg-mint-500' : 'bg-gray-300'
                   }`}
               >
                 <span
@@ -156,13 +156,13 @@ function Sidebar() {
       </div>
 
       {/* User Section */}
-      <div className={`px-6 py-6 border-t border-gray-50 flex items-center gap-4 ${isCollapsed ? 'justify-center' : ''}`}>
-        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 border border-gray-200">
-          <span className="text-xs font-black text-gray-900 uppercase">AD</span>
+      <div className={`px-6 py-6 border-t border-carbon-300 flex items-center gap-4 ${isCollapsed ? 'justify-center' : ''}`}>
+        <div className="w-10 h-10 rounded-full bg-carbon-400 flex items-center justify-center shrink-0 border border-carbon-300">
+          <span className="text-xs font-black text-white uppercase">AD</span>
         </div>
         {!isCollapsed && (
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-black text-gray-900 uppercase truncate">Operator 001</p>
+            <p className="text-xs font-black text-white uppercase truncate">Operator 001</p>
             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest truncate">Secure Access Level 5</p>
           </div>
         )}
@@ -209,11 +209,11 @@ function RootLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <main
-      className="min-h-screen bg-neutral-50/50 transition-all duration-300"
+      className="min-h-screen bg-carbon-500 transition-all duration-300"
       style={{ marginLeft: `${sidebarWidth}px` }}
     >
       <div className="fixed top-0 right-0 h-[600px] w-full pointer-events-none opacity-[0.03] z-0 overflow-hidden" style={{ left: `${sidebarWidth}px` }}>
-        <div className="absolute -top-40 -right-40 w-full h-full bg-blue-500 blur-[150px] rounded-full"></div>
+        <div className="absolute -top-40 -right-40 w-full h-full bg-mint-500 blur-[150px] rounded-full"></div>
       </div>
 
       <div
@@ -231,9 +231,22 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  useEffect(() => {
+    document.title = 'Vigil | Autonomous Fraud Defense'
+    const metaDescription = document.querySelector('meta[name="description"]')
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'Autonomous Economic Fraud Defense')
+    } else {
+      const meta = document.createElement('meta')
+      meta.name = 'description'
+      meta.content = 'Autonomous Economic Fraud Defense'
+      document.head.appendChild(meta)
+    }
+  }, [])
+
   return (
     <html lang="en">
-      <body className="min-h-screen selection:bg-blue-100 selection:text-blue-900">
+      <body className="min-h-screen selection:bg-mint-500/20 selection:text-mint-500">
         <Sidebar />
         <RootLayoutContent>{children}</RootLayoutContent>
       </body>

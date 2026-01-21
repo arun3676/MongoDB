@@ -1,4 +1,6 @@
-# Fraud Escalation Agent
+# Vigil
+
+**Autonomous Economic Fraud Defense**
 
 A multi-agent fraud detection system that uses value-of-information reasoning to autonomously decide when to purchase premium fraud signals. The system implements the x402 payment protocol for paywalled signals, with complete auditability through MongoDB Atlas.
 
@@ -106,7 +108,7 @@ Open your browser:
 ## Project Structure
 
 ```
-fraudagent/
+vigil/
 ├── app/
 │   ├── api/                # API routes
 │   │   ├── analytics/      # Analytics endpoints

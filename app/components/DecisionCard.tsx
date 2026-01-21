@@ -48,63 +48,71 @@ export default function DecisionCard({ decision }: DecisionCardProps) {
         return {
           icon: '✓',
           label: 'Approve',
-          bgColor: 'bg-green-100',
-          textColor: 'text-green-800',
-          borderColor: 'border-green-200',
+          bgColor: 'rgba(16, 185, 129, 0.15)',
+          textColor: '#10B981',
+          borderColor: 'rgba(16, 185, 129, 0.3)',
         };
       case 'DENY':
         return {
           icon: '✗',
           label: 'Deny',
-          bgColor: 'bg-red-100',
-          textColor: 'text-red-800',
-          borderColor: 'border-red-200',
+          bgColor: 'rgba(239, 68, 68, 0.15)',
+          textColor: '#EF4444',
+          borderColor: 'rgba(239, 68, 68, 0.3)',
         };
       case 'ESCALATE':
         return {
-          icon: '↗️',
+          icon: '↗',
           label: 'Escalate',
-          bgColor: 'bg-yellow-100',
-          textColor: 'text-yellow-800',
-          borderColor: 'border-yellow-200',
+          bgColor: 'rgba(245, 158, 11, 0.15)',
+          textColor: '#F59E0B',
+          borderColor: 'rgba(245, 158, 11, 0.3)',
         };
     }
   };
 
   const config = getDecisionConfig();
   const confidencePercent = (decision.confidence * 100).toFixed(0);
+  
+  // Get friendly agent name (remove redundant "Agent" suffix)
+  const agentName = decision.agentName?.replace(' Agent', '').replace('_', ' ') || 'Unknown';
 
   return (
-    <div className={`bg-white rounded-lg shadow-md border ${config.borderColor} p-5`}>
+    <div 
+      className="rounded-lg shadow-md border p-4"
+      style={{ 
+        backgroundColor: '#1A1A1A', 
+        borderColor: config.borderColor
+      }}
+    >
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">{decision.agentName || 'Unknown Agent'}</h3>
-          {decision.decisionId && (
-            <p className="text-xs text-gray-500">ID: {decision.decisionId.substring(0, 12)}...</p>
-          )}
-        </div>
-        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${config.bgColor} ${config.textColor}`}>
-          <span aria-hidden="true">{config.icon}</span> {config.label}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-base font-bold font-mono" style={{ color: '#E5E5E5' }}>{agentName}</h3>
+        <span 
+          className="px-2.5 py-1 rounded-full text-xs font-bold font-mono border"
+          style={{
+            backgroundColor: config.bgColor,
+            color: config.textColor,
+            borderColor: config.borderColor
+          }}
+        >
+          {config.icon} {config.label}
         </span>
       </div>
 
       {/* Confidence Score */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-medium text-gray-700">Confidence</p>
-          <span className="text-sm font-bold text-gray-900">{confidencePercent}%</span>
+      <div className="mb-3 pb-3 border-b" style={{ borderColor: '#262626' }}>
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-[10px] font-mono uppercase" style={{ color: '#9CA3AF' }}>Confidence</p>
+          <span className="text-sm font-bold font-mono" style={{ color: '#E5E5E5' }}>{confidencePercent}%</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
+        <div className="w-full rounded-full h-1.5" style={{ backgroundColor: '#262626' }}>
           <div
-            className={`h-2.5 rounded-full ${
-              decision.confidence >= 0.8
-                ? 'bg-green-500'
-                : decision.confidence >= 0.5
-                  ? 'bg-yellow-500'
-                  : 'bg-red-500'
-            }`}
-            style={{ width: `${confidencePercent}%` }}
+            className="h-1.5 rounded-full"
+            style={{ 
+              width: `${confidencePercent}%`,
+              backgroundColor: decision.confidence >= 0.8 ? '#10B981' : decision.confidence >= 0.5 ? '#F59E0B' : '#EF4444'
+            }}
           />
         </div>
       </div>
@@ -117,12 +125,11 @@ export default function DecisionCard({ decision }: DecisionCardProps) {
 
       {/* Risk Factors */}
       {decision.riskFactors && decision.riskFactors.length > 0 && (
-        <div className="mb-4">
-          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Risk Factors</p>
+        <div className="mb-3 pb-3 border-b" style={{ borderColor: '#262626' }}>
           <ul className="space-y-1">
-            {decision.riskFactors.map((factor, index) => (
-              <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                <span className="text-red-500 flex-shrink-0">⚠</span>
+            {decision.riskFactors.slice(0, 2).map((factor, index) => (
+              <li key={index} className="text-xs font-mono flex items-start gap-1.5" style={{ color: '#E5E5E5' }}>
+                <span className="text-red-400 flex-shrink-0">•</span>
                 <span className="flex-1">{factor}</span>
               </li>
             ))}
@@ -132,85 +139,35 @@ export default function DecisionCard({ decision }: DecisionCardProps) {
 
       {/* Signals Used */}
       {decision.signalsUsed && decision.signalsUsed.length > 0 && (
-        <div className="mb-4">
-          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Signals Used</p>
-          <div className="flex flex-wrap gap-2">
+        <div className="mb-3">
+          <div className="flex flex-wrap gap-1.5">
             {decision.signalsUsed.map((signalId, index) => (
-              <a
+              <span
                 key={index}
-                href={`#signal-${signalId}`}
-                className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium hover:bg-blue-100 transition-colors"
+                className="px-1.5 py-0.5 rounded text-[10px] font-mono border"
+                style={{
+                  backgroundColor: 'rgba(62, 180, 137, 0.1)',
+                  color: '#3EB489',
+                  borderColor: 'rgba(62, 180, 137, 0.3)'
+                }}
               >
-                {signalId?.substring ? signalId.substring(0, 8) + '...' : String(signalId)}
-              </a>
+                {signalId?.substring ? signalId.substring(0, 6) + '...' : String(signalId).substring(0, 6)}
+              </span>
             ))}
           </div>
           {decision.signalCost > 0 && (
-            <p className="text-xs text-gray-500 mt-2">Signal cost: ${decision.signalCost.toFixed(2)}</p>
+            <p className="text-[10px] font-mono mt-1.5" style={{ color: '#9CA3AF' }}>${decision.signalCost.toFixed(2)}</p>
           )}
         </div>
       )}
 
       {/* Metadata */}
-      <div className="pt-4 border-t border-gray-200 grid grid-cols-2 gap-3 text-xs">
-        <div>
-          <p className="text-gray-500 mb-1">Timestamp</p>
-          <p className="text-gray-900 font-medium">{formatTimestamp(decision.timestamp)}</p>
-        </div>
+      <div className="pt-3 border-t flex items-center justify-between text-[10px] font-mono" style={{ borderColor: '#262626' }}>
+        <span style={{ color: '#9CA3AF' }}>{formatTimestamp(decision.timestamp)}</span>
         {decision.processingTime && (
-          <div>
-            <p className="text-gray-500 mb-1">Processing Time</p>
-            <p className="text-gray-900 font-medium">{formatDuration(decision.processingTime)}</p>
-          </div>
-        )}
-        {decision.model && (
-          <div className="col-span-2">
-            <p className="text-gray-500 mb-1">Model</p>
-            <p className="text-gray-900 font-medium font-mono">{decision.model}</p>
-          </div>
+          <span style={{ color: '#9CA3AF' }}>{formatDuration(decision.processingTime)}</span>
         )}
       </div>
-
-      {/* View LLM Prompt Button */}
-      <button
-        onClick={() => setShowPrompt(!showPrompt)}
-        className="w-full mt-4 text-blue-600 hover:underline text-sm font-medium focus:outline-none transition-colors py-2"
-        aria-expanded={showPrompt}
-      >
-        {showPrompt ? 'Hide LLM Details' : 'View LLM Prompt'}
-      </button>
-
-      {/* LLM Prompt Details */}
-      {showPrompt && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
-            LLM Prompt & Response
-          </p>
-          <div className="bg-gray-50 rounded-md p-3 overflow-x-auto max-h-64 overflow-y-auto">
-            <pre className="text-xs text-gray-700">
-              {JSON.stringify(
-                {
-                  model: decision.model,
-                  processingTime: formatDuration(decision.processingTime),
-                  confidence: decision.confidence,
-                  reasoning: decision.reasoning,
-                  riskFactors: decision.riskFactors,
-                  decision: decision.decision,
-                },
-                null,
-                2
-              )}
-            </pre>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Full prompt and response details available in{' '}
-            <a href="#audit" className="text-blue-600 hover:underline">
-              audit packet
-            </a>
-            .
-          </p>
-        </div>
-      )}
     </div>
   );
 }

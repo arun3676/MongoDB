@@ -10,15 +10,15 @@
    ============================================ */
 
 :root {
-    /* Core Colors - Light Theme */
-    --carbon: #FFFFFF;
-    --carbon-light: #F9FAFB;
-    --carbon-lighter: #F3F4F6;
+    /* Core Colors - Carbon Mint Theme */
+    --carbon: #121212;
+    --carbon-light: #1A1A1A;
+    --carbon-lighter: #242424;
 
-    /* Blue Nexus - Professional accent */
-    --mint: #3B82F6;
-    --mint-dim: rgba(59, 130, 246, 0.6);
-    --mint-glow: rgba(59, 130, 246, 0.05);
+    /* Mint - Premium financial accent */
+    --mint: #3EB489;
+    --mint-dim: rgba(62, 180, 137, 0.6);
+    --mint-glow: rgba(62, 180, 137, 0.05);
 
     /* Border Colors - Light */
     --border-color: #E5E7EB;
@@ -33,8 +33,8 @@
     /* Semantic Colors */
     --danger: #EF4444;
     --warning: #F59E0B;
-    --success: #10B981;
-    --info: #3B82F6;
+    --success: #3EB489;
+    --info: #3EB489;
 
     /* Layout */
     --sidebar-width: 260px;
@@ -51,13 +51,13 @@
    ============================================ */
 
 html[data-theme='night'] {
-    --carbon: #111521;
-    --carbon-light: #0F1320;
-    --carbon-lighter: #151A26;
+    --carbon: #121212;
+    --carbon-light: #1A1A1A;
+    --carbon-lighter: #242424;
 
-    --mint: #6B8CFF;
-    --mint-dim: rgba(107, 140, 255, 0.6);
-    --mint-glow: rgba(107, 140, 255, 0.08);
+    --mint: #3EB489;
+    --mint-dim: rgba(62, 180, 137, 0.6);
+    --mint-glow: rgba(62, 180, 137, 0.08);
 
     --border-color: #1F2633;
     --border-light: #1A2030;
@@ -88,7 +88,7 @@ html {
 body {
     margin: 0;
     padding: 0;
-    background-color: var(--carbon-light);
+    background-color: var(--carbon);
     color: var(--text-primary);
     min-height: 100vh;
     font-family: 'Inter', system-ui, sans-serif;
@@ -99,20 +99,20 @@ body {
    ============================================ */
 
 .bg-grid {
-    background-color: var(--carbon-light);
+    background-color: var(--carbon);
     background-image:
-        radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
-        linear-gradient(rgba(229, 231, 235, 0.4) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(229, 231, 235, 0.4) 1px, transparent 1px);
+        radial-gradient(circle at 50% 0%, rgba(62, 180, 137, 0.03) 0%, transparent 50%),
+        linear-gradient(rgba(62, 180, 137, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(62, 180, 137, 0.1) 1px, transparent 1px);
     background-size: 100% 100%, 40px 40px, 40px 40px;
     background-position: center top, 0 0, 0 0;
 }
 
 .bg-grid-subtle {
-    background-color: var(--carbon-light);
+    background-color: var(--carbon);
     background-image:
-        linear-gradient(rgba(229, 231, 235, 0.2) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(229, 231, 235, 0.2) 1px, transparent 1px);
+        linear-gradient(rgba(62, 180, 137, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(62, 180, 137, 0.08) 1px, transparent 1px);
     background-size: 32px 32px;
 }
 
@@ -121,27 +121,28 @@ body {
    ============================================ */
 
 html[data-theme='night'] .bg-white {
-    background-color: #121722;
+    background-color: #1A1A1A;
 }
 
 html[data-theme='night'] .bg-gray-50 {
-    background-color: #0F1320;
+    background-color: #121212;
 }
 
 html[data-theme='night'] .bg-gray-100 {
-    background-color: #151B28;
+    background-color: #1A1A1A;
 }
 
 html[data-theme='night'] .bg-neutral-50 {
-    background-color: #151A26;
+    background-color: #121212;
 }
 
 html[data-theme='night'] .bg-neutral-50\/50 {
-    background-color: rgba(21, 26, 38, 0.6);
+    background-color: rgba(18, 18, 18, 0.6);
 }
 
-html[data-theme='night'] .bg-blue-50 {
-    background-color: rgba(107, 140, 255, 0.12);
+html[data-theme='night'] .bg-blue-50,
+html .bg-mint-500\/10 {
+    background-color: rgba(62, 180, 137, 0.12);
 }
 
 html[data-theme='night'] .text-gray-900 {
@@ -176,8 +177,9 @@ html[data-theme='night'] .border-gray-200 {
     border-color: #263042;
 }
 
-html[data-theme='night'] .border-blue-100 {
-    border-color: rgba(107, 140, 255, 0.2);
+html[data-theme='night'] .border-blue-100,
+html .border-mint-500\/20 {
+    border-color: rgba(62, 180, 137, 0.2);
 }
 
 html[data-theme='night'] .shadow-xl,

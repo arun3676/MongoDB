@@ -173,19 +173,6 @@ const catalog: MarketplaceProduct[] = [
       'https://images.unsplash.com/photo-1606986601547-a4d886b671b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMjA3fDB8MXxzZWFyY2h8Mnx8bWlycm9ybGVzcyUyMGNhbWVyYXxlbnwwfHx8fDE3Njg0MTMzMjJ8MA&ixlib=rb-4.1.0&q=80&w=800',
   },
   {
-    id: 'prd_giftcard_prime',
-    name: 'Prime Gift Card',
-    category: 'Gift Cards',
-    price: 100,
-    currency: 'USD',
-    brand: 'Prime',
-    rating: 4.1,
-    tags: ['gift_card', 'high_risk'],
-    description: 'Digital gift card delivered by email.',
-    imageUrl:
-      'https://images.unsplash.com/photo-1610286347146-af3d8f9a9103?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMjA3fDB8MXxzZWFyY2h8Mnx8Z2lmdCUyMGNhcmQlMjBmbGF0JTIwbGF5fGVufDB8fHx8MTc2ODQxNDA4MXww&ixlib=rb-4.1.0&q=80&w=800',
-  },
-  {
     id: 'prd_laptop_quantum',
     name: 'Quantum Pro Laptop',
     category: 'Electronics',

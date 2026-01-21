@@ -46,22 +46,23 @@ export default function CostTracker({ totalCost, signals, spentSoFar }: CostTrac
   const displayCost = spentSoFar !== undefined ? spentSoFar : totalCost;
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow-md p-6 border border-blue-100">
+    <div className="rounded-lg shadow-md p-6 border" style={{ backgroundColor: '#1A1A1A', borderColor: '#262626' }}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm text-gray-600 uppercase tracking-wider mb-1">Total Analysis Cost</h2>
+          <h2 className="text-sm font-mono uppercase tracking-wider mb-1" style={{ color: '#9CA3AF' }}>Total Analysis Cost</h2>
           <p
-            className={`text-3xl font-bold text-blue-900 transition-all duration-200 ${
+            className={`text-3xl font-bold font-mono transition-all duration-200 ${
               isPulsing ? 'animate-pulse' : ''
             }`}
             style={{
               transform: isPulsing ? 'scale(1.05)' : 'scale(1)',
+              color: '#E5E5E5'
             }}
           >
             {formatCost(displayCost)}
           </p>
           {spentSoFar !== undefined && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs font-mono mt-1" style={{ color: '#9CA3AF' }}>
               Live budget tracking
             </p>
           )}
@@ -69,7 +70,8 @@ export default function CostTracker({ totalCost, signals, spentSoFar }: CostTrac
 
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium focus:outline-none focus:underline transition-colors"
+          className="text-sm font-medium font-mono focus:outline-none transition-colors hover:opacity-80"
+          style={{ color: '#3EB489' }}
           aria-expanded={isExpanded}
           aria-label="Toggle cost breakdown"
         >
@@ -78,18 +80,18 @@ export default function CostTracker({ totalCost, signals, spentSoFar }: CostTrac
       </div>
 
       {isExpanded && (
-        <div className="mt-4 pt-4 border-t border-blue-200 space-y-2">
-          <p className="text-xs text-gray-600 uppercase tracking-wider mb-3">Cost Breakdown</p>
+        <div className="mt-4 pt-4 border-t space-y-2" style={{ borderColor: '#262626' }}>
+          <p className="text-xs font-mono uppercase tracking-wider mb-3" style={{ color: '#9CA3AF' }}>Cost Breakdown</p>
 
           {velocitySignal ? (
             <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-700">
-                Velocity Signal <span className="text-xs text-gray-500">({velocitySignal.purchasedBy})</span>
+              <span style={{ color: '#E5E5E5' }}>
+                Velocity Signal <span className="text-xs font-mono" style={{ color: '#9CA3AF' }}>({velocitySignal.purchasedBy})</span>
               </span>
-              <span className="font-semibold text-gray-900">{formatCost(velocitySignal.cost)}</span>
+              <span className="font-semibold font-mono" style={{ color: '#E5E5E5' }}>{formatCost(velocitySignal.cost)}</span>
             </div>
           ) : (
-            <div className="flex justify-between items-center text-sm text-gray-400">
+            <div className="flex justify-between items-center text-sm font-mono" style={{ color: '#9CA3AF' }}>
               <span>Velocity Signal</span>
               <span>Not purchased</span>
             </div>
@@ -97,32 +99,32 @@ export default function CostTracker({ totalCost, signals, spentSoFar }: CostTrac
 
           {networkSignal ? (
             <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-700">
-                Network Signal <span className="text-xs text-gray-500">({networkSignal.purchasedBy})</span>
+              <span style={{ color: '#E5E5E5' }}>
+                Network Signal <span className="text-xs font-mono" style={{ color: '#9CA3AF' }}>({networkSignal.purchasedBy})</span>
               </span>
-              <span className="font-semibold text-gray-900">{formatCost(networkSignal.cost)}</span>
+              <span className="font-semibold font-mono" style={{ color: '#E5E5E5' }}>{formatCost(networkSignal.cost)}</span>
             </div>
           ) : (
-            <div className="flex justify-between items-center text-sm text-gray-400">
+            <div className="flex justify-between items-center text-sm font-mono" style={{ color: '#9CA3AF' }}>
               <span>Network Signal</span>
               <span>Not purchased</span>
             </div>
           )}
 
-          <div className="flex justify-between items-center text-sm border-t border-blue-200 pt-2">
-            <span className="text-gray-700">LLM Calls</span>
-            <span className="text-green-600 font-medium">Included</span>
+          <div className="flex justify-between items-center text-sm border-t pt-2" style={{ borderColor: '#262626' }}>
+            <span style={{ color: '#E5E5E5' }}>LLM Calls</span>
+            <span className="font-medium font-mono" style={{ color: '#10B981' }}>Included</span>
           </div>
 
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-700">Final Review</span>
-            <span className="text-green-600 font-medium">Free (cached)</span>
+            <span style={{ color: '#E5E5E5' }}>Final Review</span>
+            <span className="font-medium font-mono" style={{ color: '#10B981' }}>Free (cached)</span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-blue-200">
-            <p className="text-xs text-gray-500">
+          <div className="mt-3 pt-3 border-t" style={{ borderColor: '#262626' }}>
+            <p className="text-xs font-mono" style={{ color: '#9CA3AF' }}>
               Premium signals purchased via x402 protocol.{' '}
-              <a href="#audit" className="text-blue-600 hover:underline">
+              <a href="#audit" className="hover:opacity-80 transition-opacity" style={{ color: '#3EB489' }}>
                 View payment audit
               </a>
             </p>
@@ -131,14 +133,15 @@ export default function CostTracker({ totalCost, signals, spentSoFar }: CostTrac
       )}
 
       {/* Infrastructure Footer */}
-      <div className="mt-4 pt-4 border-t border-blue-200">
-        <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+      <div className="mt-4 pt-4 border-t" style={{ borderColor: '#262626' }}>
+        <div className="flex items-center justify-center gap-2 text-xs font-mono" style={{ color: '#9CA3AF' }}>
           <span>Powered by</span>
           <a
             href="https://www.mongodb.com/products/platform/atlas-database"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-[#00ED64] hover:text-[#00684A] transition-colors inline-flex items-center gap-1"
+            className="font-semibold hover:opacity-80 transition-opacity inline-flex items-center gap-1"
+            style={{ color: '#10B981' }}
           >
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17.193 9.555c-1.264-5.58-4.252-7.414-4.573-8.115-.28-.394-.53-.954-.735-1.44-.036.495-.055.685-.523 1.184-.723.566-4.438 3.682-4.74 10.02-.282 5.912 4.27 9.435 4.888 9.884l.07.05A73.49 73.49 0 0111.91 24h.481c.114-1.032.284-2.056.51-3.07.417-.296 4.812-3.502 4.292-11.375z"/>
@@ -150,7 +153,8 @@ export default function CostTracker({ totalCost, signals, spentSoFar }: CostTrac
             href="https://www.coinbase.com/cloud/products/cdp"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-[#0052FF] hover:text-[#0040C1] transition-colors inline-flex items-center gap-1"
+            className="font-semibold hover:opacity-80 transition-opacity inline-flex items-center gap-1"
+            style={{ color: '#3EB489' }}
           >
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12zm-1.5-13.5h3v3h-3v-3z"/>
@@ -158,7 +162,7 @@ export default function CostTracker({ totalCost, signals, spentSoFar }: CostTrac
             Coinbase CDP
           </a>
         </div>
-        <p className="text-center text-[10px] text-gray-400 mt-1">
+        <p className="text-center text-[10px] font-mono mt-1" style={{ color: '#9CA3AF' }}>
           Autonomous payments via x402 protocol
         </p>
       </div>

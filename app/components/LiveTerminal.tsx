@@ -77,6 +77,7 @@ export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isLogsExpanded, setIsLogsExpanded] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -238,55 +239,75 @@ export default function LiveTerminal({ transactionId }: LiveTerminalProps) {
 
       {/* SYSTEM LOG TERMINAL */}
       <div className="p-8 bg-neutral-50/50">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
-            <p className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">System Logs</p>
-          </div>
-          <span className="text-[10px] font-mono text-gray-400 bg-white border border-gray-100 px-2 py-0.5 rounded uppercase">{transactionId.slice(0, 12)}</span>
-        </div>
-
-        <div
-          className="max-h-96 overflow-y-auto pr-4 scrollbar-hide space-y-2"
-          ref={feedRef}
+        <button
+          onClick={() => setIsLogsExpanded(!isLogsExpanded)}
+          className="flex items-center justify-between w-full mb-6 hover:opacity-80 transition-opacity"
         >
-          {isLoading && (
-            <div className="flex items-center gap-3">
-              <div className="h-4 w-4 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
-              <p className="text-xs font-medium text-gray-400 italic">Initializing secure log stream...</p>
-            </div>
-          )}
-          {error && (
-            <p className="text-xs font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
-              CRITICAL: {error}
-            </p>
-          )}
-          {!isLoading && !error && systemLogEvents.length === 0 && (
-            <p className="text-xs font-medium text-gray-400 text-center py-8">Waiting for agent activity...</p>
-          )}
-          {!isLoading &&
-            !error &&
-            systemLogEvents.map((event) => (
-              <div key={event.id} className="flex items-start gap-3 py-2 px-3 rounded-xl bg-white border border-neutral-100/50 hover:border-blue-100 transition-colors group">
-                <span
-                  className="font-mono text-[10px] text-gray-400 mt-0.5 shrink-0"
-                >
-                  {formatTimestamp(event.timestamp)}
-                </span>
-                <span
-                  className="font-black text-[10px] uppercase tracking-tighter shrink-0 px-1.5 py-0.5 rounded"
-                  style={{ color: event.color, background: `${event.color}10` }}
-                >
-                  {event.type}
-                </span>
-                <p
-                  className="text-[11px] text-gray-600 font-medium flex-1 leading-relaxed"
-                >
-                  {event.message}
-                </p>
+          <div className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full bg-blue-500 ${isLogsExpanded ? 'animate-pulse' : ''}`}></div>
+            <p className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">System Logs</p>
+            {!isLoading && !error && systemLogEvents.length > 0 && (
+              <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                {systemLogEvents.length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-gray-400 bg-white border border-gray-100 px-2 py-0.5 rounded uppercase">{transactionId.slice(0, 12)}</span>
+            <svg 
+              className={`h-4 w-4 text-gray-400 transition-transform ${isLogsExpanded ? 'rotate-180' : ''}`} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
+
+        {isLogsExpanded && (
+          <div
+            className="max-h-96 overflow-y-auto pr-4 scrollbar-hide space-y-2"
+            ref={feedRef}
+          >
+            {isLoading && (
+              <div className="flex items-center gap-3">
+                <div className="h-4 w-4 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+                <p className="text-xs font-medium text-gray-400 italic">Initializing secure log stream...</p>
               </div>
-            ))}
-        </div>
+            )}
+            {error && (
+              <p className="text-xs font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
+                CRITICAL: {error}
+              </p>
+            )}
+            {!isLoading && !error && systemLogEvents.length === 0 && (
+              <p className="text-xs font-medium text-gray-400 text-center py-8">Waiting for agent activity...</p>
+            )}
+            {!isLoading &&
+              !error &&
+              systemLogEvents.map((event) => (
+                <div key={event.id} className="flex items-start gap-3 py-2 px-3 rounded-xl bg-white border border-neutral-100/50 hover:border-blue-100 transition-colors group">
+                  <span
+                    className="font-mono text-[10px] text-gray-400 mt-0.5 shrink-0"
+                  >
+                    {formatTimestamp(event.timestamp)}
+                  </span>
+                  <span
+                    className="font-black text-[10px] uppercase tracking-tighter shrink-0 px-1.5 py-0.5 rounded"
+                    style={{ color: event.color, background: `${event.color}10` }}
+                  >
+                    {event.type}
+                  </span>
+                  <p
+                    className="text-[11px] text-gray-600 font-medium flex-1 leading-relaxed"
+                  >
+                    {event.message}
+                  </p>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
     </div>
   );

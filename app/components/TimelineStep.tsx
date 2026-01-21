@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Settings, Search, FileCheck, Shield, Sword, Scale, DollarSign, Zap, X } from 'lucide-react';
+import ThoughtBubble from './ThoughtBubble';
 
 interface TimelineStepProps {
   stepNumber: number;
@@ -176,9 +177,14 @@ export default function TimelineStep({
             </span>
           </div>
         )}
-        <div className="text-center">
+        <div className="text-center mb-2">
           <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed font-medium">{summary}</p>
         </div>
+        <ThoughtBubble 
+          reasoning={output?.reasoning as string | undefined}
+          thinking={metadata?.thinking as string | undefined}
+          isThinking={action?.toLowerCase().includes('thinking') || action?.toLowerCase().includes('evaluating')}
+        />
       </div>
 
       {isModalOpen && (

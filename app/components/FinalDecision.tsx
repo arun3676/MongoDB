@@ -117,22 +117,25 @@ export default function FinalDecision({
 
         {/* Evidence Metadata Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="bg-white/50 backdrop-blur-sm p-5 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-gray-200/20">
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Agent Quorum</p>
-            <p className="text-2xl font-black text-gray-900">{agentDecisionsCount || 0} Votes</p>
+          {/* Agent Quorum Card */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-2xl border border-blue-100 transition-all hover:shadow-lg hover:shadow-blue-200/30">
+            <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-2">Agent Quorum</p>
+            <p className="text-3xl font-black text-blue-700">{agentDecisionsCount || 0} Votes</p>
           </div>
-          <div className="bg-white/50 backdrop-blur-sm p-5 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-gray-200/20">
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Network Signals</p>
-            <div className="flex flex-col items-center">
-              <p className="text-2xl font-black text-gray-900">{signalsCount || 0} Datapoints</p>
-              {totalCost !== undefined && (
-                <p className="text-[9px] font-black text-blue-600 mt-1 uppercase tracking-tight">${totalCost.toFixed(3)} Cost</p>
-              )}
-            </div>
+          
+          {/* Network Signals Card */}
+          <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-5 rounded-2xl border border-purple-100 transition-all hover:shadow-lg hover:shadow-purple-200/30">
+            <p className="text-[9px] font-black text-purple-600 uppercase tracking-widest mb-2">Network Signals</p>
+            <p className="text-3xl font-black text-purple-700">{signalsCount || 0} Datapoints</p>
           </div>
-          <div className="bg-white/50 backdrop-blur-sm p-5 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-gray-200/20">
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Anomalies Detected</p>
-            <p className={`text-2xl font-black ${riskFactorsCount === 0 ? 'text-emerald-500' : 'text-red-500'}`}>{riskFactorsCount || 0} Flags</p>
+          
+          {/* Anomalies Detected Card */}
+          <div className={`p-5 rounded-2xl border transition-all hover:shadow-lg ${riskFactorsCount === 0 
+            ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-100 hover:shadow-emerald-200/30' 
+            : 'bg-gradient-to-br from-red-50 to-rose-50 border-red-200 hover:shadow-red-200/40'
+          }`}>
+            <p className={`text-[9px] font-black uppercase tracking-widest mb-2 ${riskFactorsCount === 0 ? 'text-emerald-600' : 'text-red-600'}`}>Anomalies Detected</p>
+            <p className={`text-3xl font-black ${riskFactorsCount === 0 ? 'text-emerald-600' : 'text-red-600'}`}>{riskFactorsCount || 0} Flags</p>
           </div>
         </div>
       </div>
