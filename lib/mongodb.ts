@@ -7,21 +7,30 @@
 
 import { MongoClient, Db } from 'mongodb';
 
-if (!process.env.MONGODB_URI) {
-  throw new Error('Missing MONGODB_URI in environment variables');
+// Lazy getters for environment variables (validated at runtime, not import time)
+function getMongoUri(): string {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error('Missing MONGODB_URI in environment variables');
+  }
+  return uri;
 }
 
-if (!process.env.MONGODB_DB_NAME) {
-  throw new Error('Missing MONGODB_DB_NAME in environment variables');
+function getMongoDbName(): string {
+  const dbName = process.env.MONGODB_DB_NAME;
+  if (!dbName) {
+    throw new Error('Missing MONGODB_DB_NAME in environment variables');
+  }
+  return dbName;
 }
 
-const MONGODB_URI = process.env.MONGODB_URI;
-const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME;
-
-// If the URI doesn't include SSL parameters, add them
-let connectionUri = MONGODB_URI;
-if (!MONGODB_URI.includes('ssl=')) {
-  connectionUri = MONGODB_URI + (MONGODB_URI.includes('?') ? '&' : '?') + 'ssl=true&tlsAllowInvalidCertificates=false';
+// Build connection URI with SSL parameters (called at runtime)
+function getConnectionUri(): string {
+  const mongoUri = getMongoUri();
+  if (!mongoUri.includes('ssl=')) {
+    return mongoUri + (mongoUri.includes('?') ? '&' : '?') + 'ssl=true&tlsAllowInvalidCertificates=false';
+  }
+  return mongoUri;
 }
 
 // Connection options for production use
@@ -58,6 +67,8 @@ let clientPromise: Promise<MongoClient> | undefined;
  */
 export async function getClient(): Promise<MongoClient> {
   // Lazy initialization: only create connection when actually needed
+  const connectionUri = getConnectionUri(); // Get URI at runtime
+  
   if (process.env.NODE_ENV === 'development') {
     // In development, use a global variable to preserve the connection
     // across hot reloads
@@ -83,7 +94,7 @@ export async function getClient(): Promise<MongoClient> {
  */
 export async function getDatabase(): Promise<Db> {
   const client = await getClient();
-  return client.db(MONGODB_DB_NAME);
+  return client.db(getMongoDbName()); // Get DB name at runtime
 }
 
 /**
@@ -115,7 +126,7 @@ export async function getConnectionInfo() {
 
     return {
       connected: true,
-      database: MONGODB_DB_NAME,
+      database: getMongoDbName(), // Get DB name at runtime
       host: serverInfo.me,
     };
   } catch (error) {

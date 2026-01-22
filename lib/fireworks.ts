@@ -18,16 +18,22 @@
 
 import OpenAI from 'openai';
 
-// Validate FIREWORKS_API_KEY before initializing client
-if (!process.env.FIREWORKS_API_KEY) {
-  throw new Error('Missing FIREWORKS_API_KEY in environment variables');
-}
+// Lazy initialization of Fireworks client (only when actually called)
+let fireworks: OpenAI | null = null;
 
-// Initialize Fireworks client (uses OpenAI-compatible API)
-const fireworks = new OpenAI({
-  apiKey: process.env.FIREWORKS_API_KEY,
-  baseURL: 'https://api.fireworks.ai/inference/v1',
-});
+function getFireworksClient(): OpenAI {
+  if (!fireworks) {
+    const apiKey = process.env.FIREWORKS_API_KEY;
+    if (!apiKey) {
+      throw new Error('Missing FIREWORKS_API_KEY in environment variables');
+    }
+    fireworks = new OpenAI({
+      apiKey,
+      baseURL: 'https://api.fireworks.ai/inference/v1',
+    });
+  }
+  return fireworks;
+}
 
 // The model we'll use for all agents
 // Try different model names if one doesn't work
@@ -50,13 +56,14 @@ export async function callLLM<T = any>(
   }
 ): Promise<T> {
   try {
+    const client = getFireworksClient();
     const messages = [
       { role: 'system' as const, content: systemPrompt },
       { role: 'user' as const, content: userPrompt },
     ];
 
     // Call Fireworks AI
-    const response = await fireworks.chat.completions.create({
+    const response = await client.chat.completions.create({
       model: MODEL,
       messages,
       temperature: 0.3, // Lower = more deterministic (good for fraud detection)

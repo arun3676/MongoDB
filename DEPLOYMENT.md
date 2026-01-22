@@ -4,6 +4,7 @@ This guide covers deploying Vigil to production environments.
 
 ## Table of Contents
 
+- [Deployment Overview](#deployment-overview)
 - [Railway Deployment](#railway-deployment) (Recommended)
 - [Docker Deployment](#docker-deployment)
 - [Vercel Deployment](#vercel-deployment)
@@ -12,6 +13,122 @@ This guide covers deploying Vigil to production environments.
 - [Post-Deployment](#post-deployment)
 - [Monitoring](#monitoring)
 - [Troubleshooting](#troubleshooting)
+
+---
+
+## Deployment Overview
+
+### Project Structure
+
+Your project has two components:
+1. **Next.js App** (root directory) - Main fraud detection application
+2. **ML Service** (`ml_service/` directory) - Python FastAPI service for Isolation Forest model
+
+### Root Directory Detection
+
+✅ **Railway**: Automatically detects the root directory and builds the Next.js app. No configuration needed.
+
+✅ **Vercel**: Automatically detects Next.js in the root directory. No configuration needed.
+
+Both platforms will:
+- Auto-detect `package.json` in root
+- Run `npm install` and `npm run build`
+- Start the Next.js server
+
+### ML Service Deployment
+
+The `ml_service` is a **separate Python service** that needs its own deployment:
+
+**Option 1: Deploy ML Service on Railway (Recommended)**
+1. Create a **second Railway service** in the same project
+2. Set root directory to `ml_service/`
+3. Railway will auto-detect Python and use `requirements.txt`
+4. Set environment variable: `ML_SERVICE_URL=https://your-ml-service.railway.app`
+
+**Option 2: Deploy ML Service Separately**
+- Deploy to Render, Fly.io, or any Python hosting
+- Update `ML_SERVICE_URL` in your Next.js app to point to the ML service URL
+
+**Option 3: Skip ML Service (Optional)**
+- The app works without the ML service
+- Suspicion Agent will use heuristics only (no ML anomaly scores)
+- Set `ML_SERVICE_URL` to empty or omit it
+
+### Environment Variables Split
+
+#### For Railway (Next.js App)
+
+All environment variables go into the **Next.js service**:
+
+```
+# Required
+MONGODB_URI=mongodb+srv://...
+MONGODB_DB_NAME=fraud_agent
+FIREWORKS_API_KEY=your_key
+
+# Production
+NODE_ENV=production
+
+# Payments (CDP)
+CDP_API_KEY_NAME=your_key_id
+CDP_API_KEY_PRIVATE_KEY=-----BEGIN EC PRIVATE KEY-----\n...
+CDP_NETWORK_ID=base-sepolia
+CDP_RECIPIENT_ADDRESS=0x...
+
+# SMS (Twilio)
+TWILIO_ACCOUNT_SID=your_sid
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_FROM_NUMBER=+15551234567
+
+# ML Service (if deployed separately)
+ML_SERVICE_URL=https://your-ml-service.railway.app
+
+# Optional
+VOYAGE_API_KEY=your_key
+```
+
+#### For Vercel (Next.js App Only)
+
+**Important**: Vercel only supports the Next.js app. The ML service must be deployed elsewhere (Railway, Render, etc.).
+
+Add these environment variables in Vercel dashboard:
+
+```
+# Required
+MONGODB_URI=mongodb+srv://...
+MONGODB_DB_NAME=fraud_agent
+FIREWORKS_API_KEY=your_key
+
+# Production
+NODE_ENV=production
+
+# Payments (CDP)
+CDP_API_KEY_NAME=your_key_id
+CDP_API_KEY_PRIVATE_KEY=-----BEGIN EC PRIVATE KEY-----\n...
+CDP_NETWORK_ID=base-sepolia
+CDP_RECIPIENT_ADDRESS=0x...
+
+# SMS (Twilio)
+TWILIO_ACCOUNT_SID=your_sid
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_FROM_NUMBER=+15551234567
+
+# ML Service (point to external deployment)
+ML_SERVICE_URL=https://your-ml-service.onrender.com
+
+# Optional
+VOYAGE_API_KEY=your_key
+```
+
+#### For ML Service (Separate Deployment)
+
+If deploying ML service separately, only these are needed:
+
+```
+# Python service environment (minimal)
+PORT=8000
+# (Model files should be in the deployment)
+```
 
 ---
 
@@ -34,7 +151,18 @@ Railway is the recommended platform for Vigil. It offers:
 1. Click "New Project"
 2. Select "Deploy from GitHub repo"
 3. Choose the `VIGIL` repository
-4. Railway will auto-detect Next.js
+4. Railway will auto-detect Next.js in the root directory
+
+### Step 2b: Deploy ML Service (Optional)
+
+If you want to use the ML service:
+
+1. In the same Railway project, click **"+ New"** → **"Service"**
+2. Select **"Deploy from GitHub repo"** again
+3. Choose the same `VIGIL` repository
+4. In the service settings, set **Root Directory** to `ml_service`
+5. Railway will auto-detect Python and install from `requirements.txt`
+6. Note the ML service URL (e.g., `https://ml-service.railway.app`)
 
 ### Step 3: Configure Environment Variables
 
@@ -49,20 +177,21 @@ FIREWORKS_API_KEY=your_fireworks_api_key
 # Production settings
 NODE_ENV=production
 
-# Optional: Mock mode for demos (set to false for production)
-USE_MOCK_PAYMENTS=true
-USE_MOCK_SMS=true
-
-# Optional: Real payments (requires CDP setup)
+# Payments (requires CDP setup)
 CDP_API_KEY_NAME=your_cdp_key_id
 CDP_API_KEY_PRIVATE_KEY=-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----
 CDP_NETWORK_ID=base-sepolia
 CDP_RECIPIENT_ADDRESS=0x...
 
-# Optional: Real SMS (requires Twilio)
+# SMS Notifications (requires Twilio)
 TWILIO_ACCOUNT_SID=your_twilio_sid
 TWILIO_AUTH_TOKEN=your_twilio_token
 TWILIO_FROM_NUMBER=+15551234567
+
+# ML Service (if deployed separately)
+# If you deployed ML service in Step 2b, use that URL:
+ML_SERVICE_URL=https://your-ml-service.railway.app
+# If not using ML service, omit this variable
 
 # Optional: Embeddings
 VOYAGE_API_KEY=your_voyage_key
@@ -76,8 +205,10 @@ Railway automatically deploys when you:
 
 Build process:
 1. `npm ci` - Install dependencies
-2. `npm run build` - Build Next.js app
-3. `npm start` - Start production server
+2. `npm run build` - Build Next.js app (environment variables NOT required during build)
+3. `npm start` - Start production server (environment variables required at runtime)
+
+**Note**: Environment variables are only needed when the app runs, not during the Docker build phase. The code uses lazy initialization to validate environment variables at runtime.
 
 ### Step 5: Configure Domain (Optional)
 
@@ -142,8 +273,10 @@ services:
       - MONGODB_URI=${MONGODB_URI}
       - MONGODB_DB_NAME=${MONGODB_DB_NAME}
       - FIREWORKS_API_KEY=${FIREWORKS_API_KEY}
-      - USE_MOCK_PAYMENTS=true
-      - USE_MOCK_SMS=true
+      - CDP_API_KEY_NAME=${CDP_API_KEY_NAME}
+      - CDP_API_KEY_PRIVATE_KEY=${CDP_API_KEY_PRIVATE_KEY}
+      - CDP_NETWORK_ID=${CDP_NETWORK_ID}
+      - CDP_RECIPIENT_ADDRESS=${CDP_RECIPIENT_ADDRESS}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
@@ -162,6 +295,14 @@ docker-compose up -d
 
 ## Vercel Deployment
 
+### Important: ML Service Limitation
+
+⚠️ **Vercel only supports Next.js (serverless functions).** The Python ML service (`ml_service/`) cannot run on Vercel.
+
+**Options:**
+1. **Deploy ML service separately** on Railway/Render/Fly.io, then set `ML_SERVICE_URL` in Vercel
+2. **Skip ML service** - The app works without it (uses heuristics only)
+
 ### Deploy via CLI
 
 ```bash
@@ -173,16 +314,24 @@ vercel
 
 1. Import project at [vercel.com/new](https://vercel.com/new)
 2. Connect GitHub repository
-3. Configure environment variables
-4. Deploy
+3. **Root directory**: Leave empty (auto-detects root)
+4. Configure environment variables (see [Environment Variables Split](#environment-variables-split))
+5. Deploy
+
+### Configure Environment Variables
+
+Add all environment variables in Vercel dashboard → Settings → Environment Variables.
+
+**Important**: Set `ML_SERVICE_URL` to your externally deployed ML service URL, or omit it if not using ML service.
 
 ### Limitations on Vercel
 
 - Serverless functions have 10-second timeout (free tier)
 - Cold starts may affect first request
 - Long-running agent operations may timeout
+- **Cannot run Python ML service** (must deploy separately)
 
-For production use, Railway is recommended over Vercel.
+For production use, Railway is recommended over Vercel (supports both Next.js and ML service).
 
 ---
 
@@ -202,11 +351,9 @@ For production use, Railway is recommended over Vercel.
 |----------|-------------|---------|
 | `NODE_ENV` | Environment mode | `development` |
 | `PORT` | Server port | `3000` |
-| `USE_MOCK_PAYMENTS` | Use mock payment system | `false` |
-| `USE_MOCK_SMS` | Use mock SMS system | `false` |
 | `LOG_LEVEL` | Logging level | `warn` (production) |
 
-### CDP Variables (Real Payments)
+### CDP Variables (Blockchain Payments)
 
 | Variable | Description |
 |----------|-------------|
@@ -216,7 +363,7 @@ For production use, Railway is recommended over Vercel.
 | `CDP_RECIPIENT_ADDRESS` | Payment recipient |
 | `CDP_WALLET_ID` | Wallet ID (auto-created) |
 
-### Twilio Variables (Real SMS)
+### Twilio Variables (SMS Notifications)
 
 | Variable | Description |
 |----------|-------------|
@@ -337,6 +484,20 @@ Set `LOG_LEVEL` to control verbosity:
 
 ### Build Failures
 
+**Error: Missing MONGODB_URI in environment variables (during build)**
+This error occurs during `npm run build` when Next.js tries to collect page data.
+
+**Solution**: This has been fixed in the latest code. The app now uses lazy initialization - environment variables are validated at runtime, not during build.
+
+If you still see this error:
+```bash
+# Pull latest changes
+git pull origin main
+
+# Rebuild
+npm run build
+```
+
 **Error: Module not found**
 ```bash
 # Clear cache and reinstall
@@ -406,9 +567,9 @@ npm run db:init
 ### Tips
 
 1. **Use connection pooling** - Already configured in `lib/mongodb.ts`
-2. **Enable mock mode for demos** - Saves API costs
-3. **Monitor usage** - Railway dashboard shows resource consumption
-4. **Use M0 MongoDB cluster** - Free tier for development/demos
+2. **Monitor usage** - Railway dashboard shows resource consumption
+3. **Use M0 MongoDB cluster** - Free tier for development/demos
+4. **Configure rate limits** - Prevent excessive API usage
 
 ---
 
@@ -419,8 +580,45 @@ npm run db:init
 - [ ] HTTPS enabled (automatic on Railway/Vercel)
 - [ ] No secrets in git history
 - [ ] Production `NODE_ENV` set
-- [ ] Mock mode disabled for production payments
+- [ ] CDP and Twilio credentials configured securely
 - [ ] Database user has minimal required permissions
+
+---
+
+## Quick Reference
+
+### What Goes Where?
+
+| Component | Railway | Vercel | Notes |
+|-----------|---------|--------|-------|
+| **Next.js App** | ✅ Auto-detected (root) | ✅ Auto-detected (root) | No config needed |
+| **ML Service** | ✅ Separate service (set root: `ml_service/`) | ❌ Not supported | Deploy separately for Vercel |
+| **Environment Variables** | All in Next.js service | All in Vercel dashboard | See [Environment Variables Split](#environment-variables-split) |
+
+### Environment Variables Summary
+
+**Required for Both:**
+- `MONGODB_URI`
+- `MONGODB_DB_NAME`
+- `FIREWORKS_API_KEY`
+- `NODE_ENV=production`
+
+**For Payments:**
+- `CDP_API_KEY_NAME`
+- `CDP_API_KEY_PRIVATE_KEY`
+- `CDP_NETWORK_ID`
+- `CDP_RECIPIENT_ADDRESS`
+
+**For SMS:**
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_FROM_NUMBER`
+
+**For ML Service:**
+- `ML_SERVICE_URL` (point to deployed ML service, or omit if not using)
+
+**Optional:**
+- `VOYAGE_API_KEY` (for semantic embeddings)
 
 ---
 
