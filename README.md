@@ -94,15 +94,11 @@ For production deployments, ensure all required environment variables are config
 | `MONGODB_URI` | Yes | MongoDB Atlas connection string |
 | `MONGODB_DB_NAME` | Yes | Database name (default: `fraud_agent`) |
 | `FIREWORKS_API_KEY` | Yes | Fireworks AI API key for LLM |
-| `CDP_API_KEY_NAME` | No* | Coinbase Developer Platform API key ID |
-| `CDP_API_KEY_PRIVATE_KEY` | No* | CDP private key (PEM format) |
-| `CDP_NETWORK_ID` | No* | Network ID (e.g., `base-sepolia`) |
-| `CDP_RECIPIENT_ADDRESS` | No* | Ethereum address for payments |
-| `USE_MOCK_PAYMENTS` | No | Enable mock payment mode (development only) |
-| `USE_MOCK_SMS` | No | Enable mock SMS mode (development only) |
+| `CDP_API_KEY_NAME` | Yes | Coinbase Developer Platform API key ID |
+| `CDP_API_KEY_PRIVATE_KEY` | Yes | CDP private key (PEM format) |
+| `CDP_NETWORK_ID` | Yes | Network ID (e.g., `base-sepolia`) |
+| `CDP_RECIPIENT_ADDRESS` | Yes | Ethereum address for payments |
 | `VOYAGE_API_KEY` | No | Voyage AI API key for semantic embeddings |
-
-*Required for production blockchain payments. See [DEPLOYMENT.md](DEPLOYMENT.md) for production setup.
 
 ---
 
