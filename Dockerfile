@@ -40,6 +40,9 @@ ENV NODE_ENV=production
 # Build the application (standalone output enabled on Linux)
 RUN npm run build
 
+# Ensure public directory exists (create if missing, with a placeholder to ensure COPY works)
+RUN mkdir -p /app/public && touch /app/public/.gitkeep
+
 # Stage 3: Runner (Production)
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -52,8 +55,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy public assets
-COPY --from=builder /app/public ./public
+# Copy public assets (directory exists in builder with at least .gitkeep)
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Set correct permissions for prerender cache
 RUN mkdir .next
