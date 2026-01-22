@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createVerificationSession } from '@/lib/agents/customer-notification-agent';
+import { getBaseUrl } from '@/lib/env';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +13,8 @@ export async function POST(request: NextRequest) {
 
     const { token, sessionId, expiresAt } = await createVerificationSession(transactionId);
 
-    const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3001'}/verify/${token}`;
+    const baseUrl = getBaseUrl();
+    const verificationLink = `${baseUrl}/verify/${token}`;
 
     return NextResponse.json({
       success: true,

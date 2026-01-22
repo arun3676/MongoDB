@@ -23,6 +23,7 @@
 import { getDatabase, COLLECTIONS } from '../mongodb';
 import { callLLM, formatTransactionForLLM, formatSignalForLLM } from '../fireworks';
 import { triggerCustomerNotification } from './customer-notification-agent';
+import { getBaseUrl } from '../env';
 
 type VerificationContext = {
   sessionId: string;
@@ -427,7 +428,7 @@ async function purchaseSignalWithCDP(
   proposedPrice?: number,
   negotiationPitch?: string
 ): Promise<any> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3001';
+  const baseUrl = getBaseUrl();
   const fullPrice = signalType === 'velocity' ? 0.10 : 0.25;
   const paymentAmount = proposedPrice || fullPrice;
 

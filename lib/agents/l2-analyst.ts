@@ -86,11 +86,12 @@
 import { getDatabase, COLLECTIONS } from '../mongodb';
 import { callLLM, formatTransactionForLLM, formatSignalForLLM } from '../fireworks';
 import { runFinalReviewer } from './final-reviewer';
+import { getBaseUrl } from '../env';
 
 // Internal helper to purchase network signal via x402 flow
 async function purchaseNetworkSignal(transactionId: string, userId: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3001';
+    const baseUrl = getBaseUrl();
 
     // Step 1: Make payment
     const paymentResponse = await fetch(`${baseUrl}/api/payments`, {

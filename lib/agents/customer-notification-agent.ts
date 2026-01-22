@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { COLLECTIONS, getDatabase } from '../mongodb';
 import { sendEmailNotification, sendSMSNotification, sendWebhookNotification } from '../notifications';
 import { runBuyerDecisionAgent } from './buyer-decision-agent';
+import { getBaseUrl } from '../env';
 
 type VerificationStatus = 'PENDING' | 'VERIFIED' | 'CONFIRMED' | 'DISPUTED' | 'EXPIRED';
 
@@ -143,7 +144,8 @@ export async function sendNotification(transactionId: string, sessionToken: stri
     throw new Error(`Transaction ${transactionId} not found`);
   }
 
-  const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3001'}/verify/${sessionToken}`;
+  const baseUrl = getBaseUrl();
+  const verificationLink = `${baseUrl}/verify/${sessionToken}`;
 
   const { phone, email, webhookUrl } = getContactInfo(transaction);
   const normalizedPhone = normalizePhoneE164(phone);

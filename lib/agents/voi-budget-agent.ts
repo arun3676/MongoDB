@@ -33,6 +33,7 @@
 import { getDatabase, COLLECTIONS } from '../mongodb';
 import { runBuyerDecisionAgent } from './buyer-decision-agent';
 import { callLLM } from '../fireworks';
+import { getBaseUrl } from '../env';
 
 /**
  * Run VOI/Budget Agent on a transaction
@@ -77,7 +78,7 @@ export async function runVOIAgent(transactionId: string) {
     console.log(`   VOI Priority: ${voiPriority}`);
 
     // Step 3: Discover tools from x402 Bazaar
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3001';
+    const baseUrl = getBaseUrl();
     const discoveryUrl = `${baseUrl}/api/bazaar/discover?category=fraud_detection&maxPrice=${budget.remainingBudget}`;
 
     console.log(`   Querying Bazaar: ${discoveryUrl}`);

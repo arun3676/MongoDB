@@ -68,12 +68,13 @@ import { getDatabase, COLLECTIONS } from '../mongodb';
 import { callLLM, formatTransactionForLLM, formatSignalForLLM } from '../fireworks';
 import { runL2Analyst } from './l2-analyst';
 import { runFinalReviewer } from './final-reviewer';
+import { getBaseUrl } from '../env';
 
 // Internal helper to purchase velocity signal via x402 flow
 async function purchaseVelocitySignal(transactionId: string, userId: string) {
   try {
     // Step 1: Try to get signal without payment (will get 402)
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3001';
+    const baseUrl = getBaseUrl();
 
     // Step 2: Make payment
     const paymentResponse = await fetch(`${baseUrl}/api/payments`, {

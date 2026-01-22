@@ -20,9 +20,6 @@ interface EnvConfig {
   CDP_RECIPIENT_ADDRESS?: string;
   CDP_WALLET_ID?: string;
   
-  // Optional: Mock mode
-  USE_MOCK_PAYMENTS?: string;
-  USE_MOCK_SMS?: string;
   
   // Optional: Twilio (for real SMS)
   TWILIO_ACCOUNT_SID?: string;
@@ -84,36 +81,24 @@ export function validateEnv(): ValidationResult {
     }
   }
   
-  // Check CDP variables (required if not using mock payments)
-  const useMockPayments = process.env.USE_MOCK_PAYMENTS === 'true';
-  if (!useMockPayments) {
-    for (const key of CDP_VARS) {
-      if (!process.env[key]) {
-        missingOptional.push(key);
-        warnings.push(`${key} not set - payments will use mock mode`);
-      }
+  // Check CDP variables (required for blockchain payments)
+  for (const key of CDP_VARS) {
+    if (!process.env[key]) {
+      missingOptional.push(key);
+      warnings.push(`${key} not set - payment functionality may be limited`);
     }
   }
   
-  // Check Twilio variables (required if not using mock SMS)
-  const useMockSMS = process.env.USE_MOCK_SMS === 'true';
-  if (!useMockSMS) {
-    for (const key of TWILIO_VARS) {
-      if (!process.env[key]) {
-        missingOptional.push(key);
-        warnings.push(`${key} not set - SMS will use mock mode`);
-      }
+  // Check Twilio variables (required for SMS notifications)
+  for (const key of TWILIO_VARS) {
+    if (!process.env[key]) {
+      missingOptional.push(key);
+      warnings.push(`${key} not set - SMS notifications may be limited`);
     }
   }
   
   // Check for production-specific concerns
   if (process.env.NODE_ENV === 'production') {
-    if (useMockPayments) {
-      warnings.push('USE_MOCK_PAYMENTS is enabled in production - real payments disabled');
-    }
-    if (useMockSMS) {
-      warnings.push('USE_MOCK_SMS is enabled in production - real SMS disabled');
-    }
     if (!process.env.VOYAGE_API_KEY) {
       warnings.push('VOYAGE_API_KEY not set - semantic search features disabled');
     }
@@ -152,8 +137,6 @@ export function getEnv(): EnvConfig {
     CDP_NETWORK_ID: process.env.CDP_NETWORK_ID,
     CDP_RECIPIENT_ADDRESS: process.env.CDP_RECIPIENT_ADDRESS,
     CDP_WALLET_ID: process.env.CDP_WALLET_ID,
-    USE_MOCK_PAYMENTS: process.env.USE_MOCK_PAYMENTS,
-    USE_MOCK_SMS: process.env.USE_MOCK_SMS,
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
     TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER,
@@ -173,18 +156,24 @@ export function isProduction(): boolean {
 }
 
 /**
- * Check if mock payments are enabled
+ * Get base URL for API calls, ensuring it has a protocol
+ * Handles cases where BASE_URL is set without https://
  */
-export function isMockPaymentsEnabled(): boolean {
-  return process.env.USE_MOCK_PAYMENTS === 'true';
+export function getBaseUrl(): string {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3001';
+  
+  // If URL doesn't start with http:// or https://, add https://
+  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    // For localhost, use http://, otherwise use https://
+    if (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
+      return `http://${baseUrl}`;
+    }
+    return `https://${baseUrl}`;
+  }
+  
+  return baseUrl;
 }
 
-/**
- * Check if mock SMS is enabled
- */
-export function isMockSMSEnabled(): boolean {
-  return process.env.USE_MOCK_SMS === 'true';
-}
 
 /**
  * Print environment validation status to console
@@ -214,8 +203,8 @@ export function printEnvStatus(): void {
   console.log('\n✅ Feature Status:');
   console.log(`   - MongoDB: ${process.env.MONGODB_URI ? 'Configured' : 'Missing'}`);
   console.log(`   - LLM (Fireworks): ${process.env.FIREWORKS_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`   - Payments (CDP): ${isMockPaymentsEnabled() ? 'Mock Mode' : (process.env.CDP_API_KEY_NAME ? 'Configured' : 'Not Configured')}`);
-  console.log(`   - SMS (Twilio): ${isMockSMSEnabled() ? 'Mock Mode' : (process.env.TWILIO_ACCOUNT_SID ? 'Configured' : 'Not Configured')}`);
+  console.log(`   - Payments (CDP): ${process.env.CDP_API_KEY_NAME ? 'Configured' : 'Not Configured'}`);
+  console.log(`   - SMS (Twilio): ${process.env.TWILIO_ACCOUNT_SID ? 'Configured' : 'Not Configured'}`);
   console.log(`   - Embeddings (Voyage): ${process.env.VOYAGE_API_KEY ? 'Configured' : 'Not Configured'}`);
   console.log(`   - ML Service: ${process.env.ML_SERVICE_URL ? 'Configured' : 'Default (localhost:8020)'}`);
   
