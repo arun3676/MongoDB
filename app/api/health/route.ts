@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'; // Disable caching
 
 export async function GET() {
   try {
-    // Check for required environment variables first
+    // Check for required environment variables first (fast check)
     const missingVars: string[] = [];
     if (!process.env.MONGODB_URI) missingVars.push('MONGODB_URI');
     if (!process.env.MONGODB_DB_NAME) missingVars.push('MONGODB_DB_NAME');
@@ -32,50 +32,47 @@ export async function GET() {
       );
     }
 
-    // Try to initialize database (idempotent - safe to call multiple times)
-    try {
-      await initializeDatabase();
-    } catch (initError) {
-      console.error('[Health] Database initialization failed:', initError);
-      return NextResponse.json(
-        {
-          status: 'error',
-          message: 'Database initialization failed',
-          error: initError instanceof Error ? initError.message : 'Unknown initialization error',
-          hint: 'Check MongoDB connection string and network access',
-        },
-        { status: 503 }
-      );
-    }
-
-    // Get connection info
+    // Quick MongoDB connection check (with timeout to avoid hanging)
+    // Don't initialize database here - that happens lazily on first API call
     let connectionInfo;
     try {
-      connectionInfo = await getConnectionInfo();
+      // Use Promise.race to timeout after 5 seconds
+      const connectionPromise = getConnectionInfo();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Connection check timeout')), 5000)
+      );
+      
+      connectionInfo = await Promise.race([connectionPromise, timeoutPromise]) as any;
     } catch (connError) {
       console.error('[Health] Connection check failed:', connError);
-      return NextResponse.json(
-        {
-          status: 'error',
-          message: 'MongoDB connection check failed',
-          error: connError instanceof Error ? connError.message : 'Unknown connection error',
-          hint: 'Verify MONGODB_URI and MongoDB Atlas network access',
+      // Return 200 OK even if DB isn't connected yet - app is still running
+      // Database initialization happens lazily on first API call
+      return NextResponse.json({
+        status: 'ok',
+        message: 'Service is running (database connection pending)',
+        database: {
+          connected: false,
+          error: connError instanceof Error ? connError.message : 'Unknown error',
+          hint: 'Database will initialize on first API call',
         },
-        { status: 503 }
-      );
+        initialized: isDatabaseInitialized(),
+        timestamp: new Date().toISOString(),
+      });
     }
 
     if (!connectionInfo.connected) {
-      console.error('[Health] MongoDB not connected:', connectionInfo.error);
-      return NextResponse.json(
-        {
-          status: 'error',
-          message: 'MongoDB connection failed',
+      // Still return 200 - app is running, DB just needs initialization
+      return NextResponse.json({
+        status: 'ok',
+        message: 'Service is running (database initialization pending)',
+        database: {
+          connected: false,
           error: connectionInfo.error,
-          hint: 'Check MongoDB Atlas cluster status and IP whitelist',
+          hint: 'Database will initialize on first API call',
         },
-        { status: 503 }
-      );
+        initialized: isDatabaseInitialized(),
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // Return health check response
@@ -94,14 +91,12 @@ export async function GET() {
   } catch (error) {
     console.error('[Health] Unexpected error:', error);
 
-    // Return 503 (Service Unavailable) instead of 500 for health checks
-    // This tells Railway the service isn't ready yet, not that it's broken
+    // Return 503 only for unexpected errors
     return NextResponse.json(
       {
         status: 'error',
         message: 'Health check failed',
         error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
         hint: 'Check Railway logs for detailed error information',
       },
       { status: 503 }
