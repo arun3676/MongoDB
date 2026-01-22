@@ -20,6 +20,7 @@ export async function GET() {
     if (!process.env.FIREWORKS_API_KEY) missingVars.push('FIREWORKS_API_KEY');
 
     if (missingVars.length > 0) {
+      console.error('[Health] Missing env vars:', missingVars);
       return NextResponse.json(
         {
           status: 'error',
@@ -31,18 +32,47 @@ export async function GET() {
       );
     }
 
-    // Initialize database (idempotent - safe to call multiple times)
-    await initializeDatabase();
+    // Try to initialize database (idempotent - safe to call multiple times)
+    try {
+      await initializeDatabase();
+    } catch (initError) {
+      console.error('[Health] Database initialization failed:', initError);
+      return NextResponse.json(
+        {
+          status: 'error',
+          message: 'Database initialization failed',
+          error: initError instanceof Error ? initError.message : 'Unknown initialization error',
+          hint: 'Check MongoDB connection string and network access',
+        },
+        { status: 503 }
+      );
+    }
 
     // Get connection info
-    const connectionInfo = await getConnectionInfo();
+    let connectionInfo;
+    try {
+      connectionInfo = await getConnectionInfo();
+    } catch (connError) {
+      console.error('[Health] Connection check failed:', connError);
+      return NextResponse.json(
+        {
+          status: 'error',
+          message: 'MongoDB connection check failed',
+          error: connError instanceof Error ? connError.message : 'Unknown connection error',
+          hint: 'Verify MONGODB_URI and MongoDB Atlas network access',
+        },
+        { status: 503 }
+      );
+    }
 
     if (!connectionInfo.connected) {
+      console.error('[Health] MongoDB not connected:', connectionInfo.error);
       return NextResponse.json(
         {
           status: 'error',
           message: 'MongoDB connection failed',
           error: connectionInfo.error,
+          hint: 'Check MongoDB Atlas cluster status and IP whitelist',
         },
         { status: 503 }
       );
@@ -62,7 +92,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Health check failed:', error);
+    console.error('[Health] Unexpected error:', error);
 
     // Return 503 (Service Unavailable) instead of 500 for health checks
     // This tells Railway the service isn't ready yet, not that it's broken
@@ -71,7 +101,8 @@ export async function GET() {
         status: 'error',
         message: 'Health check failed',
         error: error instanceof Error ? error.message : 'Unknown error',
-        hint: 'Check environment variables and MongoDB connection',
+        stack: error instanceof Error ? error.stack : undefined,
+        hint: 'Check Railway logs for detailed error information',
       },
       { status: 503 }
     );
