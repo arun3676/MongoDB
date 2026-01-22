@@ -12,10 +12,10 @@ function hashToken(token: string) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { sessionToken: string } }
+  { params }: { params: Promise<{ sessionToken: string }> }
 ) {
   try {
-    const token = params.sessionToken;
+    const { sessionToken: token } = await params;
     const db = await getDatabase();
     const session = await db.collection(COLLECTIONS.VERIFICATION_SESSIONS).findOne({
       sessionTokenHash: hashToken(token),
@@ -47,10 +47,10 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { sessionToken: string } }
+  { params }: { params: Promise<{ sessionToken: string }> }
 ) {
   try {
-    const token = params.sessionToken;
+    const { sessionToken: token } = await params;
     const body = await req.json();
     const { action } = body;
 

@@ -1,8 +1,11 @@
 {
-  "name": "fraud-escalation-agent",
+  "name": "vigil",
   "version": "0.1.0",
-  "description": "Multi-agent fraud detection system with x402 payment protocol and MongoDB Atlas integration",
+  "description": "Vigil - Autonomous Economic Fraud Defense. Multi-agent fraud detection system with x402 payment protocol and MongoDB Atlas integration",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "keywords": [
     "fraud-detection",
     "multi-agent",
@@ -14,8 +17,10 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3001",
-    "lint": "next lint"
+    "start": "next start -p ${PORT:-3000}",
+    "lint": "next lint",
+    "db:init": "node init-database.js",
+    "env:check": "node scripts/check-env.js"
   },
   "dependencies": {
     "@coinbase/coinbase-sdk": "^0.25.0",
@@ -25,7 +30,6 @@
     "openai": "^4.28.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "sklearn": "^1.0.0",
     "voyageai": "^0.1.0"
   },
   "devDependencies": {

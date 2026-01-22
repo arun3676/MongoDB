@@ -1,28 +1,29 @@
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
 .pnp.js
 
-# testing
+# Testing
 /coverage
 
-# next.js
+# Next.js
 /.next/
 /out/
 
-# production
+# Production
 /build
 
-# misc
+# Misc
 .DS_Store
 *.pem
 
-# debug
+# Debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# local env files
+# Local env files
 .env*.local
 .env
 .env.local
@@ -32,19 +33,76 @@ yarn-error.log*
 *api*key*.json
 cdp_api_key.json
 
-# vercel
+# Vercel
 .vercel
 
-# typescript
+# Railway
+.railway
+
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# exports
+# Exports
 /exports
 
 # Claude IDE specific (optional - can be committed for collaboration)
 # .claude/
 
-# TypeScript build info
-*.tsbuildinfo
+# Test files
+test-*.ts
+test-*.js
 
+# ===========================================
+# ML/Data Science Files (Development Only)
+# ===========================================
+
+# Python pickle files (ML models)
+*.pkl
+*.pickle
+
+# CSV data files (test/synthetic data)
+synthetic_transactions.csv
+*.csv
+
+# Python scripts (development tools - keep ml_service/)
+/generate_synthetic_data.py
+/import_csv_to_mongodb.py
+/train_isolation_forest.py
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+
+# Virtual environments
+venv/
+ENV/
+.venv/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# ===========================================
+# Lock files (using npm)
+# ===========================================
+pnpm-lock.yaml
+yarn.lock
+
+# ===========================================
+# IDE and Editor
+# ===========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===========================================
+# OS Generated
+# ===========================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini

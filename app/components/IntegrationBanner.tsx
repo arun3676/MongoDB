@@ -73,14 +73,14 @@ export default function IntegrationBanner() {
                             <span className="ml-4 text-neutral-600 text-[10px] uppercase font-bold tracking-widest">middleware.ts</span>
                         </div>
                         <pre className="text-blue-300/90 leading-relaxed">
-                            <span className="text-purple-400">import</span> {'{'}{' '}Middleware{' '}{'}'} <span className="text-purple-400">from</span> <span className="text-emerald-400">'fraud-agent'</span>;{'\n\n'}
-                            <span className="text-neutral-600">// Init with signal source</span>{'\n'}
+                            <span className="text-purple-400">import</span> {'{'}{' '}Middleware{' '}{'}'} <span className="text-purple-400">from</span> <span className="text-emerald-400">&apos;fraud-agent&apos;</span>;{'\n\n'}
+                            <span className="text-neutral-600">{/* Init with signal source */}</span>{'\n'}
                             <span className="text-purple-400">const</span> guard = <span className="text-purple-400">new</span> Guard({'{'}{'\n'}
-                            {'  '}apiKey: <span className="text-emerald-400">'{apiKey}'</span>,{'\n'}
+                            {'  '}apiKey: <span className="text-emerald-400">&apos;{'{apiKey}'}&apos;</span>,{'\n'}
                             {'  '}db: <span className="text-emerald-400">process.env.DB_URL</span>{'\n'}
                             {'}'});{'\n\n'}
                             <span className="text-purple-400">export async function</span> <span className="text-amber-400">onPurchase</span>(tx) {'{'}{'\n'}
-                            {'  '}<span className="text-neutral-600">// Agentic evaluation</span>{'\n'}
+                            {'  '}<span className="text-neutral-600">{/* Agentic evaluation */}</span>{'\n'}
                             {'  '}<span className="text-purple-400">const</span> res = <span className="text-purple-400">await</span> guard.verify(tx);{'\n\n'}
                             {'  '}<span className="text-purple-400">if</span> (res.score &gt; <span className="text-orange-400">0.8</span>) {'{'}{'\n'}
                             {'    '}<span className="text-purple-400">return</span> Next.block();{'\n'}

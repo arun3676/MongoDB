@@ -111,7 +111,7 @@ export default function FinalDecision({
         {/* Reasoning Section */}
         <div className="bg-neutral-50/50 rounded-[1.5rem] p-8 border border-neutral-100/50 mb-10 max-w-3xl mx-auto">
           <p className="text-gray-600 font-medium leading-relaxed italic">
-            "{finalReasoning}"
+            &ldquo;{finalReasoning}&rdquo;
           </p>
         </div>
 

@@ -1,0 +1,98 @@
+# ===========================================
+# VIGIL - Docker Build Exclusions
+# ===========================================
+
+# Dependencies (will be installed fresh)
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+.next
+out
+build
+dist
+
+# Git
+.git
+.gitignore
+
+# Environment files (secrets!)
+.env
+.env.*
+.env.local
+.env.*.local
+*.env
+
+# IDE and editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Development files
+*.md
+!README.md
+*.log
+
+# ML/Data Science files
+*.pkl
+*.pickle
+*.csv
+*.h5
+*.model
+__pycache__
+*.py[cod]
+venv
+.venv
+*.ipynb
+
+# Python scripts (not needed for Node.js app)
+generate_synthetic_data.py
+import_csv_to_mongodb.py
+train_isolation_forest.py
+
+# Lock files (using npm)
+pnpm-lock.yaml
+yarn.lock
+
+# Test files
+test-*.ts
+test-*.js
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+coverage
+
+# Claude/Cursor IDE
+.claude
+.cursor
+mcps
+
+# Documentation (not needed in container)
+AGENTS.md
+CONTRIBUTING.md
+DEPLOYMENT.md
+docs
+
+# Scripts (not needed in production container)
+scripts
+
+# Export directory
+exports
+
+# Railway/Vercel configs (only needed for platform, not in container)
+railway.json
+vercel.json
+.vercel
+.railway
+
+# TypeScript build info
+*.tsbuildinfo

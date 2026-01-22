@@ -1,259 +1,278 @@
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js" alt="Next.js" />
+  <img src="https://img.shields.io/badge/TypeScript-5.3-blue?style=for-the-badge&logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/MongoDB-Atlas-green?style=for-the-badge&logo=mongodb" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/Railway-Deploy-purple?style=for-the-badge&logo=railway" alt="Railway" />
+</p>
+
 # Vigil
 
 **Autonomous Economic Fraud Defense**
 
 A multi-agent fraud detection system that uses value-of-information reasoning to autonomously decide when to purchase premium fraud signals. The system implements the x402 payment protocol for paywalled signals, with complete auditability through MongoDB Atlas.
 
-## Features
+## Key Features
 
-✨ **Multi-Agent Architecture**: Four specialized agents working in sequence (Suspicion → Policy → VOI/Budget → Buyer/Decision)  
-📞 **Customer Notification & Verification**: Automatic outreach + secure verification on fraud suspicions  
-💰 **Budget-Aware Decisions**: VOI (Value of Information) reasoning for every signal purchase  
-🔗 **Paywalled Signals (x402)**: Coinbase Developer Platform wallets on Base Sepolia testnet  
-📊 **Complete Audit Trail**: Every action logged in MongoDB Atlas  
+- **Multi-Agent Architecture** - Sequential agents (Suspicion → Policy → VOI/Budget → Buyer/Decision)
+- **Customer Verification** - Automatic outreach + secure identity verification
+- **Budget-Aware Decisions** - VOI (Value of Information) reasoning for signal purchases
+- **x402 Payment Protocol** - Coinbase Developer Platform wallets on Base Sepolia
+- **Complete Audit Trail** - Every action logged immutably in MongoDB Atlas
+- **Real-time Dashboard** - Live case monitoring with agent timeline visualization
 
 ---
 
-## Overview
+## Table of Contents
 
-This system implements an agentic fraud detection workflow where agents start with cheap heuristics and progressively escalate by purchasing premium signals only when the value justifies the cost. All decisions, payments, and agent reasoning are immutably recorded in MongoDB Atlas for complete auditability.
+- [Quick Start](#quick-start)
+- [Environment Variables](#environment-variables)
+- [Project Structure](#project-structure)
+- [API Reference](#api-reference)
+- [Architecture](#architecture)
+- [Deployment](#deployment)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+
+---
 
 ## Quick Start
 
-### 1. Configure Environment Variables
+### Prerequisites
 
-Copy the example environment file and configure your credentials:
+- Node.js 18+ 
+- MongoDB Atlas account
+- Fireworks AI API key
+
+### 1. Clone and Install
 
 ```bash
-# Copy example environment file
-cp env.local.template .env.local
-
-# Edit .env.local with your credentials
-```
-
-Required environment variables:
-- `MONGODB_URI` - MongoDB Atlas connection string
-- `MONGODB_DB_NAME` - Database name (default: `fraud_agent`)
-- `FIREWORKS_API_KEY` - Fireworks AI API key (for agent reasoning)
-- `CDP_API_KEY_NAME` - Coinbase Developer Platform API key ID
-- `CDP_API_KEY_PRIVATE_KEY` - CDP API key private key (PEM format)
-- `CDP_NETWORK_ID` - Network ID (e.g., `base-sepolia`)
-- `CDP_RECIPIENT_ADDRESS` - Ethereum address to receive payments
-- `CDP_WALLET_ID` - CDP wallet ID (auto-created if not set)
-
-### 2. Install Dependencies
-
-```powershell
+git clone https://github.com/arun3676/VIGIL.git
+cd VIGIL
 npm install
 ```
 
-### 3. Start Development Server
+### 2. Configure Environment
 
-```powershell
+```bash
+cp env.local.template .env.local
+# Edit .env.local with your credentials
+```
+
+### 3. Initialize Database
+
+```bash
+npm run db:init
+```
+
+### 4. Start Development Server
+
+```bash
 npm run dev
 ```
 
-Server runs at: http://localhost:3001
+Open [http://localhost:3001](http://localhost:3001) to view the application.
 
-### 4. Initialize Database
+---
 
-```bash
-node init-database.js
-```
+## Deployment
 
-### 5. Verify Setup
+Vigil can be deployed to any Node.js hosting platform. See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment instructions.
 
-```bash
-# Check environment variables
-node scripts/check-env.js
+**Quick Deploy Options:**
+- **Railway** - Recommended for production ($5/month, always-on)
+- **Docker** - Containerized deployment
+- **Vercel** - Serverless deployment (free tier available)
 
-# Test API health endpoint
-curl http://localhost:3001/api/health
-```
+For production deployments, ensure all required environment variables are configured and `NODE_ENV=production` is set.
 
-Expected health response:
-```json
-{
-  "status": "ok",
-  "database": {
-    "connected": true,
-    "name": "fraud_agent",
-    "initialized": true
-  },
-  "collections": [
-    "transactions",
-    "agent_steps",
-    "signals",
-    "payments",
-    "decisions",
-    "policies"
-  ]
-}
-```
+---
 
-### 6. Set Up CDP Wallet (First Time Only)
+## Environment Variables
 
-```bash
-# Create CDP wallet and get wallet ID
-node scripts/get-cdp-wallet-id.js
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGODB_URI` | Yes | MongoDB Atlas connection string |
+| `MONGODB_DB_NAME` | Yes | Database name (default: `fraud_agent`) |
+| `FIREWORKS_API_KEY` | Yes | Fireworks AI API key for LLM |
+| `CDP_API_KEY_NAME` | No* | Coinbase Developer Platform API key ID |
+| `CDP_API_KEY_PRIVATE_KEY` | No* | CDP private key (PEM format) |
+| `CDP_NETWORK_ID` | No* | Network ID (e.g., `base-sepolia`) |
+| `CDP_RECIPIENT_ADDRESS` | No* | Ethereum address for payments |
+| `USE_MOCK_PAYMENTS` | No | Enable mock payment mode (development only) |
+| `USE_MOCK_SMS` | No | Enable mock SMS mode (development only) |
+| `VOYAGE_API_KEY` | No | Voyage AI API key for semantic embeddings |
 
-# Add the returned wallet ID to your .env.local file
-```
+*Required for production blockchain payments. See [DEPLOYMENT.md](DEPLOYMENT.md) for production setup.
 
-### 7. Start Using the Application
-
-Open your browser:
-- http://localhost:3001
+---
 
 ## Project Structure
 
 ```
 vigil/
 ├── app/
-│   ├── api/                # API routes
-│   │   ├── analytics/      # Analytics endpoints
-│   │   ├── bazaar/         # Bazaar endpoints
-│   │   ├── case/           # Case management endpoints
-│   │   ├── marketplace/    # Marketplace endpoints
-│   │   ├── payments/       # Payment processing
-│   │   ├── signals/        # Signal endpoints (x402 paywalled)
-│   │   ├── verification/   # Verification endpoints
-│   │   └── health/         # Health check
-│   ├── analytics/          # Analytics UI
-│   ├── case/               # Case details UI
-│   ├── cases/              # Cases list UI
-│   ├── components/         # React UI components
-│   ├── marketplace/        # Marketplace UI
-│   ├── verify/             # Verification UI
-│   └── page.tsx            # Homepage
+│   ├── api/                 # API routes
+│   │   ├── case/            # Case management
+│   │   ├── signals/         # x402 paywalled signals
+│   │   ├── payments/        # Payment processing
+│   │   └── health/          # Health check
+│   ├── components/          # React UI components
+│   └── page.tsx             # Homepage
 ├── lib/
-│   ├── agents/             # Agent implementations
-│   │   ├── buyer-decision-agent.ts
-│   │   ├── customer-notification-agent.ts
-│   │   ├── final-reviewer.ts
-│   │   ├── l1-analyst.ts
-│   │   ├── l2-analyst.ts
+│   ├── agents/              # Agent implementations
 │   │   ├── orchestrator.ts
-│   │   ├── policy-agent.ts
 │   │   ├── suspicion-agent.ts
-│   │   └── voi-budget-agent.ts
-│   ├── cdp-wallet.ts       # Coinbase CDP wallet integration
-│   ├── fireworks.ts        # Fireworks AI integration
-│   ├── initDb.ts           # Database schema initialization
-│   ├── marketplace/        # Marketplace utilities
-│   ├── mongodb.ts          # MongoDB connection
-│   ├── notifications.ts    # Notification utilities
-│   ├── voyage.ts           # Voyage AI integration
-│   └── x402.ts             # x402 payment protocol utilities
-├── scripts/                # Utility scripts
-│   ├── check-env.js        # Environment variable validation
-│   ├── get-cdp-wallet-id.js # CDP wallet setup
-│   ├── pre-production-check.js # Pre-production checks
-│   └── seed-demo.js        # Seed demo data
-├── AGENTS.md               # Agent architecture documentation
-├── env.local.template      # Environment variable template
-└── .env.local              # Your environment variables (not committed)
+│   │   ├── policy-agent.ts
+│   │   ├── voi-budget-agent.ts
+│   │   └── buyer-decision-agent.ts
+│   ├── mongodb.ts           # Database connection
+│   ├── fireworks.ts         # LLM integration
+│   ├── cdp-wallet.ts        # Blockchain payments
+│   └── env.ts               # Environment validation
+├── Dockerfile               # Production container
+├── railway.json             # Railway configuration
+└── package.json
 ```
 
-## MongoDB Collections
+---
 
-The system uses 6 collections:
-
-1. **transactions** - Core fraud cases with transaction details
-2. **agent_steps** - Timeline/audit trail (append-only, immutable)
-3. **signals** - Purchased signal data (velocity, network, etc.)
-4. **payments** - x402 payment ledger with complete audit trail
-5. **decisions** - Agent reasoning chain and decisions
-6. **policies** - Fraud detection rules and escalation policies
-
-All collections and indexes are created automatically on first API request via `initDb.ts`.
-
-## API Endpoints
+## API Reference
 
 ### Core Endpoints
-- `GET /api/health` - Health check and database status
-- `POST /api/case/create` - Create a new fraud case
-- `GET /api/case/:transactionId` - Get case details with full timeline
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check and database status |
+| POST | `/api/case/create` | Create new fraud case |
+| GET | `/api/case/[transactionId]` | Get case details with timeline |
+| GET | `/api/case/list` | List all cases |
 
 ### Signal Endpoints (x402 Paywalled)
-- `GET /api/signals/velocity` - Velocity signal ($0.10 USDC)
-- `GET /api/signals/network` - Network signal ($0.25 USDC)
 
-### Payment Endpoints
-- `POST /api/payments` - Process x402 payment and return proof token
+| Method | Endpoint | Cost | Description |
+|--------|----------|------|-------------|
+| GET | `/api/signals/velocity` | $0.10 | User velocity analysis |
+| GET | `/api/signals/network` | $0.25 | Network graph analysis |
 
-### Bazaar Endpoint
-- `GET /api/bazaar/discover` - Discover available fraud detection tools
+### Payment Endpoint
 
-## Agent Architecture
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/payments` | Process x402 payment |
 
-The system uses four specialized agents that work sequentially, each with distinct responsibilities (see `AGENTS.md` for details):
+---
 
-1. **Explore Agent** - Codebase exploration, research, and understanding existing patterns (read-only operations).
-2. **UI Agent** - Frontend UI implementation - React components, Tailwind CSS, user interactions, API polling.
-3. **Orchestration Agent** - Agent logic, LLM integration, decision-making flow, MongoDB state management.
-4. **Payments Agent** - x402 payment protocol implementation, paywalled signal endpoints, mock payment provider, MongoDB payment ledger.
+## Architecture
 
-See `AGENTS.md` for detailed agent documentation.
+### Agent Flow
 
-## MongoDB Atlas Features Showcased
+```
+Transaction → Suspicion Agent → Policy Agent → VOI/Budget Agent → Buyer/Decision Agent
+                  ↓                  ↓                ↓                    ↓
+            Risk Score          Policy Check     Signal Value         Final Decision
+                                                 Calculation          (APPROVE/DENY)
+```
 
-✅ **Connection Pooling** - Efficient connection management
-✅ **Auto Schema Setup** - Collections + indexes created on startup
-✅ **TTL Indexes** - Auto-cleanup of expired signals (1 hour)
-✅ **Compound Indexes** - Fast queries on multiple fields
-✅ **Unique Constraints** - Prevent duplicate transaction IDs
-✅ **Aggregation Pipelines** - Join data from 6 collections
-✅ **Audit Trail** - Immutable append-only writes
+### Technology Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 15, React 18, Tailwind CSS |
+| Backend | Next.js API Routes |
+| Database | MongoDB Atlas |
+| LLM | Fireworks AI (Llama 3.1 70B) |
+| Payments | Coinbase Developer Platform |
+| Embeddings | Voyage AI |
+
+### MongoDB Collections
+
+| Collection | Purpose |
+|------------|---------|
+| `transactions` | Fraud cases with transaction data |
+| `agent_steps` | Immutable audit trail |
+| `signals` | Purchased signal data |
+| `payments` | x402 payment ledger |
+| `decisions` | Agent reasoning chain |
+| `policies` | Fraud detection rules |
+
+---
 
 ## Troubleshooting
 
-### Error: "Missing MONGODB_URI"
-- Ensure `.env.local` exists with valid MongoDB Atlas connection string
-- Copy from `.env.local.example` if needed
+### Build Errors
 
-### Error: "Connection timeout"
-- Check MongoDB Atlas IP whitelist (allow your IP or 0.0.0.0/0 for testing)
-- Verify cluster is running (not paused)
+```bash
+# Clear cache and reinstall
+rm -rf node_modules .next
+npm install
+npm run build
+```
 
-### Error: "Authentication failed"
-- Verify username and password in MONGODB_URI are correct
-- Ensure user has read/write permissions on database
+### MongoDB Connection Issues
+
+- Check IP whitelist in MongoDB Atlas (add `0.0.0.0/0` for Railway)
+- Verify connection string format
+- Ensure cluster is not paused
+
+### Environment Variables
+
+```bash
+# Validate environment
+npm run env:check
+```
+
+### Railway Deployment Issues
+
+- Check build logs in Railway dashboard
+- Verify all required environment variables are set
+- Ensure `NODE_ENV=production` is configured
+
+---
+
+## Development
+
+### Run Tests
+
+```bash
+npm run lint
+```
+
+### Database Operations
+
+```bash
+# Initialize database
+npm run db:init
+
+# Check environment
+npm run env:check
+```
+
+### Local Development
+
+```bash
+npm run dev
+```
+
+---
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
-- Development setup
-- Code style
-- Agent development patterns
-- Testing procedures
-- Pull request process
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
 
-### Quick Contribution Checklist
+See [AGENTS.md](AGENTS.md) for agent development guidelines.
 
-- [ ] Read `AGENTS.md` to understand the architecture
-- [ ] Follow existing code patterns
-- [ ] Test MongoDB operations locally
-- [ ] Test x402 payment flows with testnet
-- [ ] Update documentation if needed
-- [ ] Never commit secrets or `.env.local`
-
-## Architecture Notes
-
-- **Multi-Agent System**: Four specialized agents work sequentially (see `AGENTS.md`)
-- **MongoDB as Source of Truth**: All agent state and decisions are stored in MongoDB
-- **x402 Protocol**: Paywalled signals require payment before access
-- **Audit Trail**: Every action is logged immutably in `agent_steps` collection
-
-## Technology Stack
-
-- **Frontend**: Next.js 15, React 18, Tailwind CSS
-- **Backend**: Next.js API routes
-- **Database**: MongoDB Atlas
-- **LLM**: Fireworks AI (Llama-v3p1-70b-instruct)
-- **Payments**: Coinbase Developer Platform (Base Sepolia)
-- **Language**: TypeScript
+---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  Built with Next.js, MongoDB Atlas, and Fireworks AI
+</p>
