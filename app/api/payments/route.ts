@@ -75,16 +75,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Execute CDP payment (real on-chain OR mock mode)
-    const isMockMode = process.env.USE_MOCK_PAYMENTS === 'true' || 
-                      process.env.USE_MOCK_PAYMENTS === '1' ||
-                      !process.env.CDP_API_KEY_NAME;
-    
-    if (isMockMode) {
-      console.log(`[Payment] 🎭 MOCK MODE: Simulating CDP payment for ${signalType} signal ($${amount})`);
-    } else {
-      console.log(`[Payment] Executing REAL CDP payment for ${signalType} signal ($${amount})`);
-    }
+    // Execute CDP payment
+    console.log(`[Payment] Executing CDP payment for ${signalType} signal ($${amount})`);
 
     const cdpPayment = await payForSignal(signalType, amount, transactionId);
 
@@ -95,19 +87,13 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Payment failed',
           details: cdpPayment.error,
-          hint: isMockMode 
-            ? 'Mock payment failed - check logs for details'
-            : 'Check CDP wallet balance and credentials. Ensure wallet is funded with USDC on Base Sepolia. Or set USE_MOCK_PAYMENTS=true for demo mode.',
+          hint: 'Check CDP wallet balance and credentials. Ensure wallet is funded with USDC on Base Sepolia.',
         },
         { status: 500 }
       );
     }
 
-    if (cdpPayment.mock) {
-      console.log(`[Payment] ✅ Mock payment successful: ${cdpPayment.txHash?.substring(0, 20)}...`);
-    } else {
-      console.log(`[Payment] ✅ CDP payment confirmed: ${cdpPayment.txHash}`);
-    }
+    console.log(`[Payment] ✅ CDP payment successful: ${cdpPayment.txHash}`);
 
     // Generate payment ID and proof token
     const paymentId = generatePaymentId();

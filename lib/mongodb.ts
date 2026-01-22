@@ -132,14 +132,11 @@ export async function getConnectionInfo() {
   } catch (error) {
     return {
       connected: false,
-      database: MONGODB_DB_NAME,
+      database: process.env.MONGODB_DB_NAME || 'unknown',
       error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }
-
-// Export database name for use in other modules
-export const DB_NAME = MONGODB_DB_NAME;
 
 // Collection names (centralized for consistency)
 export const COLLECTIONS = {
